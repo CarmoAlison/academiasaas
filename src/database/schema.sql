@@ -216,10 +216,25 @@ create table if not exists public.workouts (
 );
 create index if not exists workouts_academy_idx on public.workouts (academy_id, student_id);
 
+-- Dias da ficha semanal (dia_semana 0=dom … 6=sáb; null = treino sem dia fixo)
+create table if not exists public.workout_days (
+  id          uuid primary key default gen_random_uuid(),
+  academy_id  uuid not null references public.academies(id),
+  workout_id  uuid not null references public.workouts(id) on delete cascade,
+  dia_semana  smallint check (dia_semana between 0 and 6),
+  nome        text,                -- foco do dia, ex.: "Peito e tríceps"
+  ordem       integer not null default 0,
+  created_at  timestamptz not null default now()
+);
+create unique index if not exists workout_days_workout_dia_uk on public.workout_days (workout_id, dia_semana)
+  where dia_semana is not null;
+create index if not exists workout_days_workout_idx on public.workout_days (workout_id, ordem);
+
 create table if not exists public.workout_exercises (
   id          uuid primary key default gen_random_uuid(),
   academy_id  uuid not null references public.academies(id),
   workout_id  uuid not null references public.workouts(id) on delete cascade,
+  day_id      uuid references public.workout_days(id) on delete cascade,
   exercise_id uuid not null references public.exercises(id),
   series      integer,
   repeticoes  text,
@@ -228,15 +243,18 @@ create table if not exists public.workout_exercises (
   ordem       integer not null default 0
 );
 create index if not exists workout_exercises_workout_idx on public.workout_exercises (workout_id, ordem);
+create index if not exists workout_exercises_day_idx on public.workout_exercises (day_id, ordem);
 
 create table if not exists public.workout_logs (
   id           uuid primary key default gen_random_uuid(),
   academy_id   uuid not null references public.academies(id),
   workout_id   uuid not null references public.workouts(id) on delete cascade,
   student_id   uuid not null references public.students(id),
+  day_id       uuid references public.workout_days(id) on delete set null,  -- dia da ficha concluído
   concluido_em timestamptz not null default now()
 );
 create index if not exists workout_logs_student_idx on public.workout_logs (student_id, concluido_em desc);
+create index if not exists workout_logs_day_idx on public.workout_logs (student_id, day_id, concluido_em desc);
 
 create table if not exists public.classes (
   id           uuid primary key default gen_random_uuid(),

@@ -124,6 +124,86 @@
   flex: 0 0 auto !important;
 }
 
+/* Treino da semana */
+.progress {
+  height: 10px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-muted-light);
+}
+
+.progress > div {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-success);
+  transition: width 300ms ease;
+}
+
+.dayHeader {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+
+.dayHeader:focus-visible {
+  border-radius: var(--radius-md);
+  box-shadow: var(--focus-ring);
+}
+
+.dayInfo {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.dayInfo strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-16);
+}
+
+.dayToday {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary), var(--shadow-sm);
+}
+
+.dayDone {
+  background: linear-gradient(0deg, var(--color-success-light), var(--color-success-light)), var(--color-surface);
+  border-color: transparent;
+}
+
+.dateBoxDone {
+  background: var(--color-success);
+  color: var(--color-white);
+}
+
+.doneRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  color: var(--color-success-text);
+  font-weight: var(--fw-medium);
+}
+
+.doneRow > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.video {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
 /* Treinos */
 .exercise {
   display: grid;

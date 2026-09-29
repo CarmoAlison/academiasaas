@@ -75,6 +75,8 @@ declare
   v_aluno_p   uuid;
   v_student   uuid;
   v_workout   uuid;
+  v_day       uuid;
+  v_dia       record;
   v_ex        uuid[];
   v_today     date := public._today();
 begin
@@ -127,13 +129,29 @@ begin
   )
   select array_agg(id) into v_ex from ins;
 
+  -- Ficha semanal (Seg a Sex). Índices de v_ex: 1 supino, 2 agachamento, 3 remada,
+  -- 4 desenvolvimento, 5 rosca, 6 tríceps
   insert into public.workouts (academy_id, student_id, professor_id, nome, objetivo, data_inicio, data_fim)
-  values (v_academy, v_student, v_prof, 'Treino A — Full body', 'Hipertrofia', v_today - 7, v_today + 53)
+  values (v_academy, v_student, v_prof, 'Hipertrofia — 5 dias', 'Hipertrofia', v_today - 7, v_today + 53)
   returning id into v_workout;
 
-  insert into public.workout_exercises (academy_id, workout_id, exercise_id, series, repeticoes, carga, descanso, ordem)
-  select v_academy, v_workout, v_ex[i], 3 + (i % 2), '10-12', (10 * i)::text || ' kg', '60s', i
-    from generate_series(1, array_length(v_ex, 1)) i;
+  for v_dia in
+    select * from (values
+      (1, 'Peito e tríceps', '{1,6}'::int[]),
+      (2, 'Costas e bíceps', '{3,5}'::int[]),
+      (3, 'Pernas',          '{2}'::int[]),
+      (4, 'Ombros',          '{4}'::int[]),
+      (5, 'Full body',       '{1,2,3}'::int[])
+    ) as v(dia, nome, exs)
+  loop
+    insert into public.workout_days (academy_id, workout_id, dia_semana, nome, ordem)
+    values (v_academy, v_workout, v_dia.dia, v_dia.nome, v_dia.dia - 1)
+    returning id into v_day;
+
+    insert into public.workout_exercises (academy_id, workout_id, day_id, exercise_id, series, repeticoes, carga, descanso, ordem)
+    select v_academy, v_workout, v_day, v_ex[e.idx], 3 + (e.idx % 2), '10-12', (10 * e.idx)::text || ' kg', '60s', e.ord - 1
+      from unnest(v_dia.exs) with ordinality as e(idx, ord);
+  end loop;
 
   -- Aulas
   insert into public.classes (academy_id, nome, descricao, professor_id, unit_id, horario, capacidade, dias_semana)

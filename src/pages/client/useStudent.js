@@ -5,6 +5,7 @@ import { listStudentPayments } from '../../services/paymentService'
 import { getMyStudent } from '../../services/studentService'
 import { listStudentWorkouts, listWorkoutLogs } from '../../services/workoutService'
 import { addDays, toISODate } from '../../utils/formatters'
+import { startOfWeek } from '../../utils/workoutDays'
 
 /** Segunda-feira da semana de `date` */
 export function weekStart(date = new Date()) {
@@ -31,9 +32,15 @@ export function useMyWorkouts() {
   return useQuery({ queryKey: ['my-workouts', studentId], queryFn: () => listStudentWorkouts(studentId), enabled: Boolean(studentId) })
 }
 
-export function useMyWorkoutLogs() {
+/** Conclusões da semana atual (segunda 00:00 em diante) */
+export function useMyWeekLogs() {
   const { studentId } = useStudentId()
-  return useQuery({ queryKey: ['my-workout-logs', studentId], queryFn: () => listWorkoutLogs(studentId), enabled: Boolean(studentId) })
+  const since = startOfWeek().toISOString()
+  return useQuery({
+    queryKey: ['my-workout-logs', studentId, since],
+    queryFn: () => listWorkoutLogs(studentId, since),
+    enabled: Boolean(studentId),
+  })
 }
 
 export function useMyPayments() {

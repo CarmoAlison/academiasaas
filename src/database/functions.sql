@@ -744,3 +744,92 @@ begin
     'config', v_cfg -> 'recibo'
   );
 end $$;
+
+-- ---------------------------------------------------------------------
+-- save_workout: ficha semanal (treino + dias + exercícios) em uma transação
+-- ---------------------------------------------------------------------
+create or replace function public.save_workout(p_academy uuid, p_workout_id uuid, p_workout jsonb, p_days jsonb)
+returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  v_id     uuid := p_workout_id;
+  v_day    jsonb;
+  v_day_id uuid;
+  v_keep   uuid[] := '{}';
+  v_ordem  integer := 0;
+  v_item   jsonb;
+  v_iordem integer;
+begin
+  if coalesce(jsonb_array_length(p_days), 0) = 0 then
+    raise exception 'Adicione ao menos um dia de treino';
+  end if;
+
+  if v_id is null then
+    if not public.has_permission(p_academy, 'treinos.criar') then
+      raise exception 'Acesso negado' using errcode = '42501';
+    end if;
+    insert into public.workouts (academy_id, student_id, professor_id, nome, objetivo, data_inicio, data_fim, ativo)
+    values (
+      p_academy, (p_workout ->> 'student_id')::uuid, nullif(p_workout ->> 'professor_id', '')::uuid,
+      p_workout ->> 'nome', nullif(p_workout ->> 'objetivo', ''),
+      nullif(p_workout ->> 'data_inicio', '')::date, nullif(p_workout ->> 'data_fim', '')::date,
+      coalesce((p_workout ->> 'ativo')::boolean, true)
+    ) returning id into v_id;
+  else
+    if not public.has_permission(p_academy, 'treinos.editar') then
+      raise exception 'Acesso negado' using errcode = '42501';
+    end if;
+    if not exists (select 1 from public.workouts where id = v_id and academy_id = p_academy and deleted_at is null) then
+      raise exception 'Treino não encontrado';
+    end if;
+    update public.workouts set
+      professor_id = nullif(p_workout ->> 'professor_id', '')::uuid,
+      nome         = p_workout ->> 'nome',
+      objetivo     = nullif(p_workout ->> 'objetivo', ''),
+      data_inicio  = nullif(p_workout ->> 'data_inicio', '')::date,
+      data_fim     = nullif(p_workout ->> 'data_fim', '')::date,
+      ativo        = coalesce((p_workout ->> 'ativo')::boolean, true)
+    where id = v_id;
+    -- libera os dias da semana para permitir trocas (ex.: seg ↔ ter) sem violar o índice único
+    update public.workout_days set dia_semana = null where workout_id = v_id;
+  end if;
+
+  for v_day in select * from jsonb_array_elements(p_days) loop
+    v_day_id := nullif(v_day ->> 'id', '')::uuid;
+    if v_day_id is not null and exists (select 1 from public.workout_days where id = v_day_id and workout_id = v_id) then
+      update public.workout_days
+         set dia_semana = nullif(v_day ->> 'dia_semana', '')::smallint, nome = nullif(v_day ->> 'nome', ''), ordem = v_ordem
+       where id = v_day_id;
+      delete from public.workout_exercises where day_id = v_day_id;
+    else
+      insert into public.workout_days (academy_id, workout_id, dia_semana, nome, ordem)
+      values (p_academy, v_id, nullif(v_day ->> 'dia_semana', '')::smallint, nullif(v_day ->> 'nome', ''), v_ordem)
+      returning id into v_day_id;
+    end if;
+    v_keep := v_keep || v_day_id;
+
+    v_iordem := 0;
+    for v_item in select * from jsonb_array_elements(coalesce(v_day -> 'items', '[]'::jsonb)) loop
+      if nullif(v_item ->> 'exercise_id', '') is null then
+        continue;
+      end if;
+      insert into public.workout_exercises (academy_id, workout_id, day_id, exercise_id, series, repeticoes, carga, descanso, ordem)
+      values (
+        p_academy, v_id, v_day_id, (v_item ->> 'exercise_id')::uuid,
+        nullif(v_item ->> 'series', '')::integer, nullif(v_item ->> 'repeticoes', ''),
+        nullif(v_item ->> 'carga', ''), nullif(v_item ->> 'descanso', ''), v_iordem
+      );
+      v_iordem := v_iordem + 1;
+    end loop;
+    if v_iordem = 0 then
+      raise exception 'Cada dia de treino precisa de ao menos um exercício';
+    end if;
+
+    v_ordem := v_ordem + 1;
+  end loop;
+
+  delete from public.workout_days where workout_id = v_id and not (id = any (v_keep));
+  delete from public.workout_exercises where workout_id = v_id and day_id is null;
+
+  return v_id;
+end $$;

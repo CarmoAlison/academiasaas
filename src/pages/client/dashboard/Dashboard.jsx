@@ -2,8 +2,9 @@ import { CalendarDays, ChevronRight, CreditCard, Dumbbell, IdCard } from 'lucide
 import { Button, SkeletonCard, StatusBadge } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { firstName, formatCurrency, formatDate, formatTime, paymentStatus, toDate, toISODate } from '../../../utils/formatters'
+import { dayLabel, exercisesLabel, weekPosition } from '../../../utils/workoutDays'
 import styles from '../client.module.css'
-import { useMyPayments, useMyStudent, useMyWorkoutLogs, useMyWorkouts, useWeekSchedule, weekStart } from '../useStudent'
+import { useMyPayments, useMyStudent, useMyWeekLogs, useMyWorkouts, useWeekSchedule, weekStart } from '../useStudent'
 
 const greeting = () => {
   const h = new Date().getHours()
@@ -14,15 +15,19 @@ export default function Dashboard() {
   const { membership } = useTenant()
   const student = useMyStudent()
   const workouts = useMyWorkouts()
-  const logs = useMyWorkoutLogs()
+  const logs = useMyWeekLogs()
   const payments = useMyPayments()
   const week = useWeekSchedule(weekStart())
   const today = toISODate()
 
-  // próximo treino = o menos recentemente concluído
-  const lastDone = (id) => logs.data?.find((l) => l.workout_id === id)?.concluido_em ?? ''
-  const nextWorkout = [...(workouts.data ?? [])].sort((a, b) => lastDone(a.id).localeCompare(lastDone(b.id)))[0]
-  const doneToday = (logs.data ?? []).some((l) => toISODate(new Date(l.concluido_em)) === today)
+  // Treino da semana: ficha ativa, dia de hoje e progresso
+  const ficha = (workouts.data ?? []).find((w) => w.days.length)
+  const doneIds = new Set((logs.data ?? []).filter((l) => l.day_id).map((l) => l.day_id))
+  const dow = new Date().getDay()
+  const todayDay = ficha?.days.find((d) => d.dia_semana === dow)
+  const nextDay = ficha?.days.find((d) => d.dia_semana != null && weekPosition(d.dia_semana) > weekPosition(dow) && !doneIds.has(d.id))
+  const doneWeek = ficha ? ficha.days.filter((d) => doneIds.has(d.id)).length : 0
+  const doneToday = Boolean(todayDay && doneIds.has(todayDay.id))
 
   const myClasses = week.days.flatMap((d) => d.items.filter((i) => i.booking && d.iso >= today))
   const pending = (payments.data ?? []).filter((p) => p.status === 'pendente').sort((a, b) => a.vencimento.localeCompare(b.vencimento))
@@ -34,7 +39,9 @@ export default function Dashboard() {
         <h1>
           {greeting()}, {firstName(membership?.profile?.nome)}!
         </h1>
-        <p className={styles.muted}>{doneToday ? 'Treino de hoje concluído. Mandou bem! 💪' : 'Bora treinar hoje?'}</p>
+        <p className={styles.muted}>
+          {doneToday ? 'Treino de hoje concluído. Mandou bem! 💪' : todayDay ? 'Bora treinar hoje?' : 'Aproveite o descanso de hoje.'}
+        </p>
       </div>
 
       <div className={styles.grid}>
@@ -43,17 +50,32 @@ export default function Dashboard() {
         ) : (
           <section className={`${styles.tile} ${styles.highlight}`}>
             <span className={styles.tileTitle}>
-              <Dumbbell size={16} /> Próximo treino
+              <Dumbbell size={16} /> Treino de hoje
             </span>
-            {nextWorkout ? (
+            {ficha ? (
               <>
-                <span className={styles.big}>{nextWorkout.nome}</span>
-                <span className={styles.muted}>
-                  {nextWorkout.items.length} exercícios{nextWorkout.objetivo ? ` · ${nextWorkout.objetivo}` : ''}
-                </span>
+                {todayDay ? (
+                  <>
+                    <span className={styles.big}>
+                      {doneToday && '✓ '}
+                      {todayDay.nome || dayLabel(todayDay.dia_semana)}
+                    </span>
+                    <span className={styles.muted}>
+                      {doneToday ? 'Concluído' : exercisesLabel(todayDay.items.length)} · {doneWeek} de {ficha.days.length} na semana
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className={styles.big}>Dia de descanso</span>
+                    <span className={styles.muted}>
+                      {nextDay ? `Próximo: ${dayLabel(nextDay.dia_semana)}${nextDay.nome ? ` — ${nextDay.nome}` : ''} · ` : ''}
+                      {doneWeek} de {ficha.days.length} na semana
+                    </span>
+                  </>
+                )}
                 <div>
                   <Button variant="secondary" size="sm" icon={ChevronRight} to="/client/treinos">
-                    Ver treino
+                    Ver treino da semana
                   </Button>
                 </div>
               </>

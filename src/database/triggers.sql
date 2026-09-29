@@ -293,3 +293,32 @@ drop trigger if exists saas_invoices_receipt on public.saas_invoices;
 create trigger saas_invoices_receipt
   before insert or update on public.saas_invoices
   for each row execute function public.saas_invoice_receipt();
+
+-- ---------------------------------------------------------------------
+-- Treino semanal: consistência dos dias + auditoria
+-- ---------------------------------------------------------------------
+create or replace function public.check_workout_day()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if tg_table_name = 'workout_days' then
+    if not exists (select 1 from public.workouts where id = new.workout_id and academy_id = new.academy_id) then
+      raise exception 'Treino não pertence à academia';
+    end if;
+  elsif new.day_id is not null
+     and not exists (select 1 from public.workout_days where id = new.day_id and workout_id = new.workout_id) then
+    raise exception 'Dia não pertence ao treino';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists workout_days_check on public.workout_days;
+create trigger workout_days_check before insert or update on public.workout_days
+  for each row execute function public.check_workout_day();
+
+drop trigger if exists workout_exercises_day_check on public.workout_exercises;
+create trigger workout_exercises_day_check before insert or update on public.workout_exercises
+  for each row execute function public.check_workout_day();
+
+drop trigger if exists workout_days_audit on public.workout_days;
+create trigger workout_days_audit after insert or update or delete on public.workout_days
+  for each row execute function public.audit_trigger();

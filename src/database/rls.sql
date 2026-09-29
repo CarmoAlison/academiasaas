@@ -367,3 +367,44 @@ drop policy if exists academy_assets_super_all on storage.objects;
 create policy academy_assets_super_all on storage.objects for all to authenticated
   using (bucket_id = 'academy-assets' and public.is_super_admin())
   with check (bucket_id = 'academy-assets' and public.is_super_admin());
+
+-- ---------------------------------------------------------------------
+-- Treino semanal: dias da ficha + conclusão por dia (aluno marca/desmarca)
+-- ---------------------------------------------------------------------
+alter table public.workout_days enable row level security;
+
+drop policy if exists workout_days_perm_select on public.workout_days;
+create policy workout_days_perm_select on public.workout_days for select to authenticated
+  using (public.has_permission(academy_id, 'treinos.ver'));
+
+drop policy if exists workout_days_own_select on public.workout_days;
+create policy workout_days_own_select on public.workout_days for select to authenticated
+  using (workout_id in (select id from public.workouts where student_id in (select public.my_student_ids())));
+
+drop policy if exists workout_days_perm_insert on public.workout_days;
+create policy workout_days_perm_insert on public.workout_days for insert to authenticated
+  with check (public.has_permission(academy_id, 'treinos.criar'));
+
+drop policy if exists workout_days_perm_update on public.workout_days;
+create policy workout_days_perm_update on public.workout_days for update to authenticated
+  using (public.has_permission(academy_id, 'treinos.editar'))
+  with check (public.has_permission(academy_id, 'treinos.editar'));
+
+drop policy if exists workout_days_perm_delete on public.workout_days;
+create policy workout_days_perm_delete on public.workout_days for delete to authenticated
+  using (public.has_permission(academy_id, 'treinos.editar'));
+
+-- Aluno registra a conclusão de um dia da própria ficha…
+drop policy if exists workout_logs_own_insert on public.workout_logs;
+create policy workout_logs_own_insert on public.workout_logs for insert to authenticated
+  with check (
+    student_id in (select public.my_student_ids())
+    and public.is_member(academy_id)
+    and workout_id in (select id from public.workouts where student_id in (select public.my_student_ids()))
+    and (day_id is null or day_id in (select id from public.workout_days where workout_id = workout_logs.workout_id))
+  );
+
+-- …e pode desfazer (desmarcar)
+drop policy if exists workout_logs_own_delete on public.workout_logs;
+create policy workout_logs_own_delete on public.workout_logs for delete to authenticated
+  using (student_id in (select public.my_student_ids()));

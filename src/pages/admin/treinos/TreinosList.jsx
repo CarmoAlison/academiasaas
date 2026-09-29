@@ -8,6 +8,7 @@ import { useTenant } from '../../../hooks/useAuth'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { listWorkouts } from '../../../services/workoutService'
 import { formatDate, toISODate } from '../../../utils/formatters'
+import { summarizeDays } from '../../../utils/workoutDays'
 import ExerciciosTab from './ExerciciosTab'
 
 function WorkoutsTab() {
@@ -47,6 +48,12 @@ function WorkoutsTab() {
       columns={[
         { key: 'nome', header: 'Treino', render: (w) => <strong>{w.nome}</strong> },
         { key: 'student.profile.nome', header: 'Aluno', render: (w) => w.student?.profile?.nome ?? '—' },
+        {
+          key: 'days',
+          header: 'Dias',
+          sortValue: (w) => w.days.length,
+          render: (w) => <span title={w.days.map((d) => d.nome).filter(Boolean).join(' · ')}>{summarizeDays(w.days)}</span>,
+        },
         { key: 'objetivo', header: 'Objetivo', render: (w) => w.objetivo ?? '—' },
         { key: 'professor.nome', header: 'Professor', render: (w) => w.professor?.nome ?? '—' },
         {
