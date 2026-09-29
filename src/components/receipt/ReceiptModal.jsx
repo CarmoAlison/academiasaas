@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Download, Printer, Share2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { getReceipt } from '../../services/receiptService'
+import { getReceipt, getSaasReceipt } from '../../services/receiptService'
 import { errorMessage } from '../../utils/errors'
 import QueryError from '../feedback/QueryError'
 import Button from '../ui/Button'
@@ -13,17 +13,22 @@ import { buildReceiptModel } from './receiptModel'
 import styles from './ReceiptModal.module.css'
 import ReceiptView from './ReceiptView'
 
+const SOURCES = {
+  aluno: getReceipt, // mensalidade do aluno (payments)
+  saas: getSaasReceipt, // fatura da assinatura do sistema (saas_invoices)
+}
+
 /**
  * Visualização do recibo + download/compartilhamento do PDF.
- * Usado pelo financeiro da academia e pela área do aluno.
- * @param {{ paymentId: string|null, onClose: () => void }} props
+ * Usado pelo financeiro da academia, pela área do aluno e pelo financeiro do Super Admin.
+ * @param {{ paymentId: string|null, onClose: () => void, source?: 'aluno'|'saas' }} props
  */
-export default function ReceiptModal({ paymentId, onClose }) {
+export default function ReceiptModal({ paymentId, onClose, source = 'aluno' }) {
   const toast = useToast()
   const [busy, setBusy] = useState(null) // 'download' | 'share' | 'print'
   const query = useQuery({
-    queryKey: ['receipt', paymentId],
-    queryFn: () => getReceipt(paymentId),
+    queryKey: ['receipt', source, paymentId],
+    queryFn: () => SOURCES[source](paymentId),
     enabled: Boolean(paymentId),
   })
   const model = useMemo(() => (query.data ? buildReceiptModel(query.data) : null), [query.data])

@@ -267,3 +267,29 @@ drop trigger if exists payments_receipt on public.payments;
 create trigger payments_receipt
   before insert or update on public.payments
   for each row execute function public.payment_receipt();
+-- ---------------------------------------------------------------------
+-- Recibo da fatura SaaS: numeração global + quem deu a baixa
+-- ---------------------------------------------------------------------
+create or replace function public.saas_invoice_receipt()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.status = 'pago' then
+    if new.pago_em is null then
+      new.pago_em := now();
+    end if;
+    if tg_op = 'INSERT' or old.status is distinct from 'pago' then
+      new.recebido_por := coalesce(public._user_nome(null), new.recebido_por);
+    end if;
+    if new.recibo_numero is null then
+      perform pg_advisory_xact_lock(hashtext('recibo:saas'));
+      select coalesce(max(recibo_numero), 0) + 1 into new.recibo_numero from public.saas_invoices;
+    end if;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists saas_invoices_receipt on public.saas_invoices;
+create trigger saas_invoices_receipt
+  before insert or update on public.saas_invoices
+  for each row execute function public.saas_invoice_receipt();

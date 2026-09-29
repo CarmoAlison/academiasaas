@@ -38,6 +38,8 @@ export function buildReceiptModel(data, overrideConfig) {
   const { pagamento: p, aluno, academia, unidade, plano } = data
   const pagoEm = toDate(p.pago_em) ?? new Date()
   const venc = toDate(p.vencimento)
+  // competência: coluna própria (fatura SaaS) ou o mês do vencimento (mensalidade do aluno)
+  const comp = toDate(p.competencia) ?? venc
 
   const endereco = unidade
     ? [
@@ -55,7 +57,7 @@ export function buildReceiptModel(data, overrideConfig) {
   const referencia = [
     p.descricao || 'Mensalidade',
     plano ? `Plano ${plano.nome}` : null,
-    venc ? `competência ${String(venc.getMonth() + 1).padStart(2, '0')}/${venc.getFullYear()}` : null,
+    comp ? `competência ${String(comp.getMonth() + 1).padStart(2, '0')}/${comp.getFullYear()}` : null,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -84,7 +86,11 @@ export function buildReceiptModel(data, overrideConfig) {
     codigo: String(p.id).replace(/-/g, '').slice(0, 8).toUpperCase().replace(/(.{4})/, '$1-'),
     valor: formatCurrency(p.valor),
     valorExtenso: valorPorExtenso(p.valor),
-    aluno: { nome: aluno?.nome ?? '', cpf: aluno?.cpf ? formatCPF(aluno.cpf) : '' },
+    // pagador: aluno (CPF) ou, no recibo da assinatura SaaS, a academia (CNPJ)
+    aluno: {
+      nome: aluno?.nome ?? '',
+      documento: aluno?.cnpj ? `CNPJ ${formatCNPJ(aluno.cnpj)}` : aluno?.cpf ? `CPF ${formatCPF(aluno.cpf)}` : '',
+    },
     referencia,
     detalhes: [
       ['Data do pagamento', pagoEm.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })],
@@ -130,6 +136,39 @@ export function sampleReceiptData({ academia, unidade, recebidoPor }) {
     aluno: { nome: 'Ana Souza (exemplo)', cpf: '52998224725' },
     academia,
     unidade,
+    config: null,
+  }
+}
+
+/**
+ * Exemplo do recibo da assinatura SaaS: emissor = empresa do SaaS, pagador = uma academia.
+ * @param {{ settings: object, recebidoPor: string }} params settings = saas_settings.dados
+ */
+export function sampleSaasReceiptData({ settings = {}, recebidoPor }) {
+  const hoje = new Date()
+  const mes = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`
+  const digits = (v) => String(v ?? '').replace(/\D/g, '') || null
+  return {
+    pagamento: {
+      id: '5a2e8f10-0000-4000-8000-000000000000',
+      numero: 7,
+      descricao: 'Assinatura do sistema',
+      valor: 299.9,
+      vencimento: `${mes}-10`,
+      competencia: `${mes}-01`,
+      pago_em: hoje.toISOString(),
+      forma_pagamento: 'pix',
+      recebido_por: recebidoPor,
+    },
+    plano: { nome: 'Pro' },
+    aluno: { nome: 'Academia Exemplo Fitness', cnpj: '11222333000181' },
+    academia: {
+      nome: settings.nome || 'Academia SaaS',
+      cnpj: digits(settings.cnpj),
+      email: settings.email_suporte || null,
+      telefone: digits(settings.telefone),
+    },
+    unidade: { endereco: settings.endereco, cidade: settings.cidade, estado: settings.estado, cep: digits(settings.cep) },
     config: null,
   }
 }

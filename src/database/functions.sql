@@ -694,3 +694,53 @@ revoke execute on function public._ensure_auth_user(text, text) from public, ano
 revoke execute on function public._set_default_password(uuid, text) from public, anon, authenticated;
 revoke execute on function public._create_member(uuid, text, text, text, text, uuid) from public, anon, authenticated;
 revoke execute on function public._create_academy(text, text, uuid, text, text, text, text) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- Recibo da fatura SaaS (Super Admin ou Admin da academia pagadora)
+-- ---------------------------------------------------------------------
+create or replace function public.get_saas_receipt(p_invoice_id uuid)
+returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare
+  v_inv public.saas_invoices;
+  v_ac  public.academies;
+  v_cfg jsonb;
+begin
+  select * into v_inv from public.saas_invoices where id = p_invoice_id;
+  if v_inv.id is null then
+    raise exception 'Fatura não encontrada';
+  end if;
+  if not (public.is_super_admin() or public.is_academy_admin(v_inv.academy_id)) then
+    raise exception 'Acesso negado' using errcode = '42501';
+  end if;
+  if v_inv.status <> 'pago' then
+    raise exception 'O recibo fica disponível após a confirmação do pagamento';
+  end if;
+
+  select * into v_ac from public.academies where id = v_inv.academy_id;
+  select coalesce(dados, '{}'::jsonb) into v_cfg from public.saas_settings where id = 1;
+  v_cfg := coalesce(v_cfg, '{}'::jsonb);
+
+  return jsonb_build_object(
+    'pagamento', jsonb_build_object(
+      'id', v_inv.id, 'numero', v_inv.recibo_numero, 'descricao', 'Assinatura do sistema',
+      'valor', v_inv.valor, 'vencimento', v_inv.vencimento, 'competencia', v_inv.competencia,
+      'pago_em', v_inv.pago_em, 'forma_pagamento', v_inv.forma_pagamento, 'recebido_por', v_inv.recebido_por
+    ),
+    'plano', (select jsonb_build_object('nome', nome) from public.saas_plans where id = v_inv.saas_plan_id),
+    'aluno', jsonb_build_object('nome', v_ac.nome, 'cnpj', v_ac.cnpj),
+    'academia', jsonb_build_object(
+      'nome', coalesce(nullif(v_cfg ->> 'nome', ''), 'Academia SaaS'),
+      'cnpj', nullif(regexp_replace(coalesce(v_cfg ->> 'cnpj', ''), '\D', '', 'g'), ''),
+      'email', nullif(v_cfg ->> 'email_suporte', ''),
+      'telefone', nullif(regexp_replace(coalesce(v_cfg ->> 'telefone', ''), '\D', '', 'g'), ''),
+      'logo_url', null
+    ),
+    'unidade', jsonb_build_object(
+      'endereco', nullif(v_cfg ->> 'endereco', ''), 'cidade', nullif(v_cfg ->> 'cidade', ''),
+      'estado', nullif(v_cfg ->> 'estado', ''), 'cep', nullif(regexp_replace(coalesce(v_cfg ->> 'cep', ''), '\D', '', 'g'), ''),
+      'telefone', null
+    ),
+    'config', v_cfg -> 'recibo'
+  );
+end $$;

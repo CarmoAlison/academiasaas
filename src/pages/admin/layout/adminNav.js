@@ -6,9 +6,13 @@ import {
   LayoutDashboard,
   MapPin,
   Package,
+  Receipt,
   ShieldCheck,
   Users,
 } from 'lucide-react'
+
+/** Permissão fictícia que só o perfil Admin (que tem todas) satisfaz */
+export const ADMIN_ONLY = 'assinatura.ver'
 
 /**
  * Menu da área admin. `perms` = qualquer uma das permissões libera o item.
@@ -38,6 +42,8 @@ export const ADMIN_NAV = [
     items: [
       { to: '/admin/perfil-acesso', label: 'Perfil de acesso', icon: ShieldCheck, perms: ['perfis.ver', 'equipe.ver'] },
       { to: '/admin/auditoria', label: 'Auditoria', icon: FileClock, perms: ['auditoria.ver'] },
+      // "assinatura.ver" não existe na matriz de permissões: só o perfil Admin (e o Super Admin) enxerga
+      { to: '/admin/assinatura', label: 'Assinatura do sistema', icon: Receipt, perms: [ADMIN_ONLY] },
     ],
   },
 ]

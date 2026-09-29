@@ -3,17 +3,23 @@ import { useEffect } from 'react'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
 import QueryError from '../../../components/feedback/QueryError'
 import ProfileCard from '../../../components/profile/ProfileCard'
-import { Button, Card, FormActions, FormGrid, FormSection, Input, PageHeader, Switch } from '../../../components/ui'
+import { Button, Card, FormActions, FormGrid, FormSection, FullRow, Input, PageHeader, Select, Switch } from '../../../components/ui'
 import { useAuth } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { getSettings, saveSettings } from '../../../services/saasService'
+import { UFS } from '../../../utils/constants'
 import { rules } from '../../../utils/validators'
 
 const DEFAULTS = {
   nome: '',
+  cnpj: '',
   email_suporte: '',
   telefone: '',
+  endereco: '',
+  cidade: '',
+  estado: '',
+  cep: '',
   dias_vencimento: 10,
   smtp_host: '',
   smtp_porta: '',
@@ -28,7 +34,7 @@ const DEFAULTS = {
 function SettingsForm({ initial }) {
   const { field, values, setValue, handleSubmit, reset } = useForm(
     { ...DEFAULTS, ...initial },
-    { nome: [rules.required()], email_suporte: [rules.email()], dias_vencimento: [rules.min(1)] },
+    { nome: [rules.required()], cnpj: [rules.cnpj()], email_suporte: [rules.email()], dias_vencimento: [rules.min(1)] },
   )
   useEffect(() => reset({ ...DEFAULTS, ...initial }), [initial, reset])
 
@@ -39,12 +45,24 @@ function SettingsForm({ initial }) {
 
   return (
     <form onSubmit={handleSubmit((v) => mutation.mutate(v))} noValidate>
-      <FormSection title="Dados do SaaS">
+      <FormSection title="Dados do SaaS" description="Também aparecem como emissor no recibo das faturas enviadas às academias.">
         <FormGrid columns={2}>
-          <Input label="Nome do produto" required {...field('nome')} />
+          <Input label="Nome do produto / empresa" required {...field('nome')} />
+          <Input label="CNPJ" inputMode="numeric" placeholder="00.000.000/0000-00" {...field('cnpj', { mask: 'cnpj' })} />
           <Input label="E-mail de suporte" type="email" {...field('email_suporte')} />
           <Input label="Telefone de suporte" {...field('telefone', { mask: 'phone' })} />
           <Input label="Dias para vencimento da fatura" type="number" min="1" {...field('dias_vencimento')} />
+        </FormGrid>
+      </FormSection>
+
+      <FormSection title="Endereço da empresa">
+        <FormGrid columns={4}>
+          <Input label="CEP" inputMode="numeric" {...field('cep', { mask: 'cep' })} />
+          <FullRow>
+            <Input label="Endereço" placeholder="Rua, número, bairro" {...field('endereco')} />
+          </FullRow>
+          <Input label="Cidade" {...field('cidade')} />
+          <Select label="UF" placeholder="—" options={UFS.map((u) => ({ value: u, label: u }))} {...field('estado')} />
         </FormGrid>
       </FormSection>
 

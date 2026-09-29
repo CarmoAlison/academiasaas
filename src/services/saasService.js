@@ -111,11 +111,12 @@ export function listSaasInvoices({ academyId, competencia } = {}) {
   return unwrap(query)
 }
 
-export const markInvoicePaid = (id) =>
-  unwrap(supabase.from('saas_invoices').update({ status: 'pago', pago_em: nowISO() }).eq('id', id))
+/** Baixa da fatura: gera o recibo (número e "recebido por" vêm do trigger no banco) */
+export const markInvoicePaid = (id, forma) =>
+  unwrap(supabase.from('saas_invoices').update({ status: 'pago', pago_em: nowISO(), forma_pagamento: forma }).eq('id', id))
 
 export const reopenInvoice = (id) =>
-  unwrap(supabase.from('saas_invoices').update({ status: 'pendente', pago_em: null }).eq('id', id))
+  unwrap(supabase.from('saas_invoices').update({ status: 'pendente', pago_em: null, forma_pagamento: null }).eq('id', id))
 
 export const cancelInvoice = (id) => unwrap(supabase.from('saas_invoices').update({ status: 'cancelado' }).eq('id', id))
 
@@ -151,5 +152,15 @@ export async function getSettings() {
   return row?.dados ?? {}
 }
 
-export const saveSettings = (dados) =>
-  unwrap(supabase.from('saas_settings').upsert({ id: 1, dados, updated_at: nowISO() }))
+/**
+ * Salva as configurações gerais sem sobrescrever a personalização do recibo
+ * (dados.recibo é gerenciado em Financeiro → Personalizar recibo).
+ */
+export async function saveSettings(dados) {
+  const current = await getSettings()
+  const rest = { ...dados }
+  delete rest.recibo
+  return unwrap(
+    supabase.from('saas_settings').upsert({ id: 1, dados: { ...current, ...rest, recibo: current.recibo }, updated_at: nowISO() }),
+  )
+}

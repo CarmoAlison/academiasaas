@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { Building2, LogIn, MapPin, Package, Trash2, Users } from 'lucide-react'
-import { useEffect } from 'react'
+import { Building2, FileText, LogIn, MapPin, Package, Trash2, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import ResetPasswordButton from '../../../components/auth/ResetPasswordButton'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
 import QueryError from '../../../components/feedback/QueryError'
+import ReceiptModal from '../../../components/receipt/ReceiptModal'
 import {
   Button,
   Card,
@@ -97,6 +98,7 @@ export default function AcademiaDetalhe() {
   const navigate = useNavigate()
   const { setAcademy } = useTenant()
   const [confirm, confirmDialog] = useConfirm()
+  const [receiptFor, setReceiptFor] = useState(null)
 
   const academy = useQuery({ queryKey: ['academy', id], queryFn: () => getAcademy(id) })
   const stats = useQuery({ queryKey: ['academy-stats', id], queryFn: () => academyStats(id) })
@@ -191,9 +193,22 @@ export default function AcademiaDetalhe() {
             { key: 'valor', header: 'Valor', align: 'right', render: (i) => formatCurrency(i.valor) },
             { key: 'vencimento', header: 'Vencimento', render: (i) => formatDate(i.vencimento) },
             { key: 'status', header: 'Status', render: (i) => <StatusBadge status={paymentStatus(i)} /> },
+            {
+              key: 'recibo',
+              header: '',
+              sortable: false,
+              align: 'right',
+              render: (i) =>
+                i.status === 'pago' && (
+                  <Button variant="ghost" size="sm" icon={FileText} onClick={() => setReceiptFor(i.id)}>
+                    Recibo
+                  </Button>
+                ),
+            },
           ]}
         />
       </Card>
+      <ReceiptModal source="saas" paymentId={receiptFor} onClose={() => setReceiptFor(null)} />
     </>
   )
 }

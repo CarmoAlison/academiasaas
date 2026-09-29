@@ -49,7 +49,7 @@ export default function ReceiptView({ model: m }) {
 
         <p className={styles.statement}>
           Recebemos de <b>{m.aluno.nome}</b>
-          {m.aluno.cpf && <>, CPF {m.aluno.cpf}</>}, a importância de <b>{m.valor}</b> ({m.valorExtenso}), referente a{' '}
+          {m.aluno.documento && <>, {m.aluno.documento}</>}, a importância de <b>{m.valor}</b> ({m.valorExtenso}), referente a{' '}
           <b>{m.referencia}</b>, dando plena e total quitação.
         </p>
 

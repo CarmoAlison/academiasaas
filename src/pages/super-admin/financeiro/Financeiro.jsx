@@ -1,14 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Clock, DollarSign, Download, FilePlus2, RotateCcw, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, DollarSign, Download, FilePlus2, FileText, Palette, RotateCcw, XCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { BarList } from '../../../components/charts/Charts'
 import QueryError from '../../../components/feedback/QueryError'
+import ReceiptModal from '../../../components/receipt/ReceiptModal'
 import {
   Button,
   Card,
   DataTable,
   Grid,
   Input,
+  Modal,
   PageHeader,
   Select,
   StatCard,
@@ -19,20 +21,60 @@ import {
 } from '../../../components/ui'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { cancelInvoice, generateInvoices, listSaasInvoices, markInvoicePaid, reopenInvoice } from '../../../services/saasService'
+import { PAYMENT_METHODS } from '../../../utils/constants'
 import { exportCSV } from '../../../utils/csv'
 import { formatCurrency, formatDate, paymentStatus, toISODate } from '../../../utils/formatters'
 
 const monthStart = () => toISODate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)).slice(0, 7)
 
+const methodLabel = (v) => PAYMENT_METHODS.find((m) => m.value === v)?.label ?? ''
+
+/** Baixa da fatura: escolhe a forma de pagamento e, ao confirmar, abre o recibo */
+function PayInvoiceModal({ invoice, onClose, onPaid, invalidate }) {
+  const [forma, setForma] = useState('pix')
+  const mutation = useMutationToast(() => markInvoicePaid(invoice.id, forma), {
+    success: 'Baixa registrada — recibo gerado e disponível para a academia',
+    invalidate,
+    onSuccess: () => {
+      onClose()
+      onPaid(invoice.id)
+    },
+  })
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      size="sm"
+      title="Registrar pagamento da fatura"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={() => mutation.mutate()} loading={mutation.isPending}>
+            Confirmar recebimento
+          </Button>
+        </>
+      }
+    >
+      <p style={{ marginBottom: 16 }}>
+        {invoice.academy?.nome} — <strong>{formatCurrency(invoice.valor)}</strong> (venc. {formatDate(invoice.vencimento)})
+      </p>
+      <Select label="Forma de pagamento" options={PAYMENT_METHODS} value={forma} onChange={(e) => setForma(e.target.value)} />
+    </Modal>
+  )
+}
+
 export default function Financeiro() {
   const [competencia, setCompetencia] = useState(monthStart())
   const [status, setStatus] = useState('')
+  const [paying, setPaying] = useState(null)
+  const [receiptFor, setReceiptFor] = useState(null)
   const [confirm, confirmDialog] = useConfirm()
 
   const query = useQuery({ queryKey: ['saas-invoices', 'all'], queryFn: () => listSaasInvoices() })
   const invalidate = [['saas-invoices'], ['super-dashboard']]
 
-  const payMutation = useMutationToast(markInvoicePaid, { success: 'Fatura marcada como paga', invalidate })
   const reopenMutation = useMutationToast(reopenInvoice, { success: 'Fatura reaberta', invalidate })
   const cancelMutation = useMutationToast(cancelInvoice, { success: 'Fatura cancelada', invalidate })
   const generateMutation = useMutationToast(() => generateInvoices(`${competencia}-01`), {
@@ -70,6 +112,8 @@ export default function Financeiro() {
       { header: 'Valor', value: (i) => Number(i.valor).toFixed(2).replace('.', ',') },
       { header: 'Status', value: (i) => i.situacao },
       { header: 'Pago em', value: (i) => (i.pago_em ? formatDate(i.pago_em) : '') },
+      { header: 'Forma', value: (i) => methodLabel(i.forma_pagamento) },
+      { header: 'Recibo', value: (i) => (i.recibo_numero ? String(i.recibo_numero).padStart(6, '0') : '') },
     ], rows)
 
   if (query.isError) return <QueryError error={query.error} onRetry={query.refetch} />
@@ -82,6 +126,9 @@ export default function Financeiro() {
         subtitle="Mensalidades do SaaS pagas pelas academias"
         actions={
           <>
+            <Button variant="outline" icon={Palette} to="/super-admin/financeiro/recibo">
+              Personalizar recibo
+            </Button>
             <Button variant="outline" icon={Download} onClick={onExport} disabled={!rows.length}>
               Exportar CSV
             </Button>
@@ -142,7 +189,24 @@ export default function Financeiro() {
           { key: 'valor', header: 'Valor', align: 'right', sortValue: (i) => Number(i.valor), render: (i) => formatCurrency(i.valor) },
           { key: 'vencimento', header: 'Vencimento', render: (i) => formatDate(i.vencimento) },
           { key: 'situacao', header: 'Status', render: (i) => <StatusBadge status={i.situacao} /> },
-          { key: 'pago_em', header: 'Pago em', render: (i) => (i.pago_em ? formatDate(i.pago_em) : '—') },
+          {
+            key: 'pago_em',
+            header: 'Pagamento',
+            render: (i) =>
+              i.status === 'pago' && i.pago_em ? (
+                <span>
+                  {formatDate(i.pago_em)}
+                  {i.forma_pagamento && ` · ${methodLabel(i.forma_pagamento)}`}
+                  {i.recibo_numero && (
+                    <span className="text-muted" style={{ display: 'block', fontSize: 12 }}>
+                      Recibo nº {String(i.recibo_numero).padStart(6, '0')}
+                    </span>
+                  )}
+                </span>
+              ) : (
+                '—'
+              ),
+          },
           {
             key: 'acoes',
             header: '',
@@ -150,10 +214,15 @@ export default function Financeiro() {
             align: 'right',
             render: (i) => (
               <div style={{ display: 'inline-flex', gap: 4 }}>
+                {i.status === 'pago' && (
+                  <Tooltip content="Ver recibo">
+                    <Button variant="ghost" size="sm" icon={FileText} onClick={() => setReceiptFor(i.id)} aria-label="Ver recibo" />
+                  </Tooltip>
+                )}
                 {i.status === 'pendente' && (
                   <>
-                    <Tooltip content="Marcar como paga">
-                      <Button variant="ghost" size="sm" icon={CheckCircle2} onClick={() => payMutation.mutate(i.id)} aria-label="Marcar como paga" />
+                    <Tooltip content="Registrar pagamento">
+                      <Button variant="ghost" size="sm" icon={CheckCircle2} onClick={() => setPaying(i)} aria-label="Registrar pagamento" />
                     </Tooltip>
                     <Tooltip content="Cancelar">
                       <Button
@@ -180,6 +249,9 @@ export default function Financeiro() {
           },
         ]}
       />
+
+      {paying && <PayInvoiceModal invoice={paying} invalidate={invalidate} onClose={() => setPaying(null)} onPaid={setReceiptFor} />}
+      <ReceiptModal source="saas" paymentId={receiptFor} onClose={() => setReceiptFor(null)} />
     </>
   )
 }

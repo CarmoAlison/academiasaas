@@ -65,9 +65,14 @@ create table if not exists public.saas_invoices (
   vencimento   date not null,
   pago_em      timestamptz,
   status       text not null default 'pendente' check (status in ('pendente', 'pago', 'cancelado')),
+  forma_pagamento text,
+  recibo_numero   integer,          -- sequencial global, gerado ao quitar (trigger saas_invoices_receipt)
+  recebido_por    text,
   created_at   timestamptz not null default now(),
   unique (academy_id, competencia)
 );
+create unique index if not exists saas_invoices_recibo_uk on public.saas_invoices (recibo_numero)
+  where recibo_numero is not null;
 
 create table if not exists public.saas_settings (
   id         integer primary key default 1 check (id = 1),

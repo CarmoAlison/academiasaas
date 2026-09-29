@@ -359,3 +359,11 @@ create policy avatars_own_update on storage.objects for update to authenticated
 drop policy if exists avatars_own_delete on storage.objects;
 create policy avatars_own_delete on storage.objects for delete to authenticated
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ---------------------------------------------------------------------
+-- Storage: Super Admin gerencia academy-assets (recibo SaaS em saas/)
+-- ---------------------------------------------------------------------
+drop policy if exists academy_assets_super_all on storage.objects;
+create policy academy_assets_super_all on storage.objects for all to authenticated
+  using (bucket_id = 'academy-assets' and public.is_super_admin())
+  with check (bucket_id = 'academy-assets' and public.is_super_admin());

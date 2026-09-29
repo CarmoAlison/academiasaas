@@ -113,7 +113,7 @@ export function ReceiptDocument({ model: m, logoDataUrl, signatureDataUrl }) {
 
             <Text style={base.statement}>
               Recebemos de <Text style={base.bold}>{m.aluno.nome}</Text>
-              {m.aluno.cpf ? `, CPF ${m.aluno.cpf}` : ''}, a importância de <Text style={base.bold}>{m.valor}</Text> (
+              {m.aluno.documento ? `, ${m.aluno.documento}` : ''}, a importância de <Text style={base.bold}>{m.valor}</Text> (
               {m.valorExtenso}), referente a <Text style={base.bold}>{m.referencia}</Text>, dando plena e total quitação.
             </Text>
 

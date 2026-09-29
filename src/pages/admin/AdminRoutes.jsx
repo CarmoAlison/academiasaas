@@ -3,6 +3,7 @@ import { Route } from 'react-router-dom'
 import PermissionGuard from '../../routes/PermissionGuard'
 import AdminIndex from './layout/AdminIndex'
 import AdminLayout from './layout/AdminLayout'
+import { ADMIN_ONLY } from './layout/adminNav'
 
 const Dashboard = lazy(() => import('./dashboard/Dashboard'))
 const AlunosList = lazy(() => import('./alunos/AlunosList'))
@@ -26,6 +27,7 @@ const LogCompleto = lazy(() => import('./auditoria/LogCompleto'))
 const Erros = lazy(() => import('./auditoria/Erros'))
 const Acessos = lazy(() => import('./auditoria/Acessos'))
 const Perfil = lazy(() => import('./perfil/Perfil'))
+const Assinatura = lazy(() => import('./assinatura/Assinatura'))
 
 const guard = (perm, element) => <PermissionGuard perm={perm}>{element}</PermissionGuard>
 
@@ -68,6 +70,8 @@ export const adminRoutes = (
       <Route path="erros" element={<Erros />} />
       <Route path="acessos" element={<Acessos />} />
     </Route>
+
+    <Route path="assinatura" element={guard(ADMIN_ONLY, <Assinatura />)} />
 
     <Route path="perfil" element={<Perfil />} />
   </Route>
