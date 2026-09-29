@@ -1,0 +1,12 @@
+/* "Mesa" onde o papel do recibo é apresentado */
+.desk {
+  margin: calc(var(--space-5) * -1);
+  padding: var(--space-6) var(--space-4);
+  background: var(--color-bg);
+}
+
+@media (max-width: 560px) {
+  .desk {
+    padding: var(--space-3) var(--space-2);
+  }
+}

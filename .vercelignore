@@ -1,0 +1,11 @@
+# Não enviar para a Vercel no deploy via CLI (a Vercel instala e compila sozinha)
+node_modules
+dist
+.vercel
+
+# Segredos locais: na Vercel as variáveis ficam em Project Settings → Environment Variables
+.env
+.env.*
+!.env.example
+
+*.log

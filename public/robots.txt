@@ -1,0 +1,3 @@
+# Sistema privado (área logada): não indexar
+User-agent: *
+Disallow: /
