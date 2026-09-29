@@ -19,7 +19,12 @@ export const DEFAULT_RECEIPT_CONFIG = {
   exibir_selo: true,
   assinatura_nome: '',
   assinatura_cargo: 'Responsável financeiro',
+  assinatura_modo: 'linha', // 'linha' | 'imagem' | 'cursiva'
+  assinatura_url: null,
 }
+
+/** Fonte cursiva da assinatura (OFL, servida de /public/fonts) */
+export const SIGNATURE_FONT_PATH = '/fonts/GreatVibes-Regular.ttf'
 
 const dataPorExtenso = (d) => d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -88,11 +93,21 @@ export function buildReceiptModel(data, overrideConfig) {
       ['Recebido por', p.recebido_por || academia?.nome || '—'],
     ],
     localData: `${cidade ? `${cidade}, ` : ''}${dataPorExtenso(pagoEm)}`,
-    assinatura: {
-      exibir: cfg.exibir_assinatura,
-      nome: cfg.assinatura_nome || academia?.nome || '',
-      cargo: cfg.assinatura_cargo || '',
-    },
+    assinatura: (() => {
+      const nome = cfg.assinatura_nome || academia?.nome || ''
+      // modo 'imagem' sem imagem enviada cai para 'linha'
+      const modo = cfg.assinatura_modo === 'imagem' && !cfg.assinatura_url ? 'linha' : cfg.assinatura_modo || 'linha'
+      return {
+        exibir: cfg.exibir_assinatura,
+        modo,
+        imagem: modo === 'imagem' ? cfg.assinatura_url : null,
+        cursiva: modo === 'cursiva' ? nome : null,
+        // nomes longos diminuem para caber numa linha (~16 caracteres no tamanho cheio)
+        cursivaEscala: Math.max(0.5, Math.min(1, 16 / Math.max(nome.length, 1))),
+        nome,
+        cargo: cfg.assinatura_cargo || '',
+      }
+    })(),
     fileName: `recibo-${String(p.numero ?? 0).padStart(6, '0')}-${(aluno?.nome ?? 'aluno').split(' ')[0].toLowerCase()}.pdf`,
   }
 }

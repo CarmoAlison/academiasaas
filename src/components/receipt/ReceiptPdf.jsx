@@ -1,4 +1,16 @@
-import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
+import { Document, Font, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
+
+// Sem hifenização automática (quebrava nomes: "Albu-querque")
+Font.registerHyphenationCallback((word) => [word])
+
+let signatureFontSrc = null
+
+/** Registra a fonte cursiva da assinatura (URL no navegador ou caminho de arquivo) */
+export function registerSignatureFont(src) {
+  if (signatureFontSrc === src) return
+  Font.register({ family: 'Assinatura', src })
+  signatureFontSrc = src
+}
 
 /** Helvetica (fonte padrão do PDF) não tem emojis: remove-os */
 const clean = (s) => String(s ?? '').replace(/\p{Extended_Pictographic}|️|‍/gu, '').trim()
@@ -37,6 +49,9 @@ const base = StyleSheet.create({
   signRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingTop: 16, paddingBottom: 18 },
   place: { fontSize: 9.5, color: MUTED },
   signature: { width: 200, alignItems: 'center' },
+  signMark: { height: 44, width: '100%', alignItems: 'center', justifyContent: 'flex-end', marginBottom: -4 },
+  signImage: { maxWidth: 170, maxHeight: 44, objectFit: 'contain' },
+  signCursive: { fontFamily: 'Assinatura', fontSize: 26, color: '#1E3A8A' },
   signLine: { width: '100%', borderTopWidth: 1, borderTopColor: '#9CA3AF', marginBottom: 4 },
   signName: { fontFamily: 'Helvetica-Bold', fontSize: 10 },
   signRole: { fontSize: 8.5, color: MUTED },
@@ -47,9 +62,10 @@ const base = StyleSheet.create({
 
 /**
  * Recibo em PDF (A4).
- * @param {{ model: ReturnType<typeof import('./receiptModel').buildReceiptModel>, logoDataUrl?: string|null }} props
+ * @param {{ model: ReturnType<typeof import('./receiptModel').buildReceiptModel>, logoDataUrl?: string|null, signatureDataUrl?: string|null }} props
+ *   Para o modo cursivo, chame registerSignatureFont() antes de renderizar.
  */
-export function ReceiptDocument({ model: m, logoDataUrl }) {
+export function ReceiptDocument({ model: m, logoDataUrl, signatureDataUrl }) {
   const { accent, accentText, accentTint, accentSoft, accentDeep } = m.colors
   const modern = m.cfg.estilo !== 'classico'
   const headerStyle = modern
@@ -121,6 +137,15 @@ export function ReceiptDocument({ model: m, logoDataUrl }) {
               <Text style={base.place}>{m.localData}</Text>
               {m.assinatura.exibir ? (
                 <View style={base.signature}>
+                  {signatureDataUrl ? (
+                    <View style={base.signMark}>
+                      <Image src={signatureDataUrl} style={base.signImage} />
+                    </View>
+                  ) : m.assinatura.cursiva && signatureFontSrc ? (
+                    <View style={base.signMark}>
+                      <Text style={[base.signCursive, { fontSize: 26 * m.assinatura.cursivaEscala }]}>{clean(m.assinatura.cursiva)}</Text>
+                    </View>
+                  ) : null}
                   <View style={base.signLine} />
                   <Text style={base.signName}>{m.assinatura.nome}</Text>
                   {m.assinatura.cargo ? <Text style={base.signRole}>{m.assinatura.cargo}</Text> : null}

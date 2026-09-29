@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Download, ImagePlus, RotateCcw, Save, Trash2 } from 'lucide-react'
+import { Download, ImagePlus, PenLine, RotateCcw, Save, Trash2, UserRound } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
 import QueryError from '../../../components/feedback/QueryError'
@@ -11,7 +11,7 @@ import { useTenant } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { unitService } from '../../../services/catalogServices'
-import { getReceiptSettings, saveReceiptSettings, uploadReceiptLogo } from '../../../services/receiptService'
+import { getReceiptSettings, saveReceiptSettings, uploadReceiptImage } from '../../../services/receiptService'
 import { getAcademy } from '../../../services/saasService'
 import { isHexColor } from '../../../utils/color'
 import { errorMessage } from '../../../utils/errors'
@@ -22,6 +22,12 @@ const PRESETS = ['#006EB8', '#0F766E', '#16A34A', '#7C3AED', '#DB2777', '#DC2626
 const STYLES = [
   { value: 'moderno', label: 'Moderno', hint: 'Cabeçalho colorido' },
   { value: 'classico', label: 'Clássico', hint: 'Cabeçalho branco com faixa' },
+]
+
+const SIGNATURE_MODES = [
+  { value: 'linha', label: 'Só a linha', hint: 'Para assinar à mão' },
+  { value: 'imagem', label: 'Imagem', hint: 'Assinatura em PNG' },
+  { value: 'cursiva', label: 'Nome cursivo', hint: 'Nome em letra de mão' },
 ]
 
 const TOGGLES = [
@@ -38,11 +44,12 @@ const toForm = (settings) => {
 }
 
 function Editor({ settings, sample }) {
-  const { academyId } = useTenant()
+  const { academyId, membership } = useTenant()
   const toast = useToast()
   const [confirm, confirmDialog] = useConfirm()
   const fileRef = useRef(null)
-  const [uploading, setUploading] = useState(false)
+  const signatureRef = useRef(null)
+  const [uploading, setUploading] = useState(null) // 'logo' | 'assinatura'
   const [exporting, setExporting] = useState(false)
 
   const { field, values, setValue, handleSubmit, reset } = useForm(toForm(settings), {
@@ -58,17 +65,18 @@ function Editor({ settings, sample }) {
     invalidate: [['receipt-settings', academyId], ['receipt']],
   })
 
-  const onLogo = async (e) => {
+  /** Upload de imagem (logo ou assinatura) → grava a URL no campo do formulário */
+  const onImage = (kind, fieldName) => async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    setUploading(true)
+    setUploading(kind)
     try {
-      setValue('logo_url', await uploadReceiptLogo(academyId, file))
+      setValue(fieldName, await uploadReceiptImage(academyId, file, kind))
     } catch (err) {
       toast.error(errorMessage(err))
     } finally {
-      setUploading(false)
+      setUploading(null)
     }
   }
 
@@ -100,7 +108,7 @@ function Editor({ settings, sample }) {
                 {model.logo ? <img src={model.logo} alt="Logo" /> : <span>{model.academia.iniciais}</span>}
               </span>
               <div className={styles.logoActions}>
-                <Button variant="outline" size="sm" icon={ImagePlus} loading={uploading} onClick={() => fileRef.current?.click()}>
+                <Button variant="outline" size="sm" icon={ImagePlus} loading={uploading === 'logo'} onClick={() => fileRef.current?.click()}>
                   {values.logo_url ? 'Trocar logo' : 'Enviar logo'}
                 </Button>
                 {values.logo_url && (
@@ -110,7 +118,7 @@ function Editor({ settings, sample }) {
                 )}
                 <small className="text-muted">PNG ou JPG, até 2 MB. Fundo transparente fica melhor.</small>
               </div>
-              <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={onLogo} />
+              <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={onImage('logo', 'logo_url')} />
             </div>
 
             <span className={styles.fieldLabel}>Cor de destaque</span>
@@ -164,12 +172,73 @@ function Editor({ settings, sample }) {
             </FormGrid>
           </Card>
 
-          <Card title="Assinatura e informações">
+          <Card title="Assinatura">
+            <span className={styles.fieldLabel} style={{ marginTop: 0 }}>
+              Acima da linha
+            </span>
+            <div className={styles.sigOptions} role="radiogroup" aria-label="Tipo de assinatura">
+              {SIGNATURE_MODES.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={values.assinatura_modo === s.value}
+                  className={`${styles.styleOption} ${values.assinatura_modo === s.value ? styles.styleActive : ''}`}
+                  onClick={() => setValue('assinatura_modo', s.value)}
+                >
+                  <strong>{s.label}</strong>
+                  <small>{s.hint}</small>
+                </button>
+              ))}
+            </div>
+
+            {values.assinatura_modo === 'imagem' && (
+              <div className={styles.sigUpload}>
+                <span className={styles.sigBox}>
+                  {values.assinatura_url ? <img src={values.assinatura_url} alt="Assinatura" /> : <small>Nenhuma imagem</small>}
+                </span>
+                <div className={styles.logoActions}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={PenLine}
+                    loading={uploading === 'assinatura'}
+                    onClick={() => signatureRef.current?.click()}
+                  >
+                    {values.assinatura_url ? 'Trocar assinatura' : 'Enviar assinatura (PNG)'}
+                  </Button>
+                  {values.assinatura_url && (
+                    <Button variant="ghost" size="sm" icon={Trash2} onClick={() => setValue('assinatura_url', '')}>
+                      Remover
+                    </Button>
+                  )}
+                  <small className="text-muted">
+                    PNG com fundo transparente, até 1 MB. Dica: assine em papel branco, fotografe e remova o fundo da imagem.
+                  </small>
+                </div>
+                <input ref={signatureRef} type="file" accept="image/png,image/webp" hidden onChange={onImage('assinatura', 'assinatura_url')} />
+              </div>
+            )}
+
             <FormGrid columns={2}>
-              <Input label="Nome na assinatura" placeholder={`Padrão: ${model.academia.nome}`} {...field('assinatura_nome')} />
+              <div>
+                <Input
+                  label={values.assinatura_modo === 'cursiva' ? 'Nome completo (aparece em letra cursiva)' : 'Nome abaixo da linha'}
+                  placeholder={`Padrão: ${model.academia.nome}`}
+                  {...field('assinatura_nome')}
+                />
+                {membership?.profile?.nome && values.assinatura_nome !== membership.profile.nome && (
+                  <Button variant="ghost" size="sm" icon={UserRound} onClick={() => setValue('assinatura_nome', membership.profile.nome)}>
+                    Usar meu nome
+                  </Button>
+                )}
+              </div>
               <Input label="Cargo" {...field('assinatura_cargo')} />
             </FormGrid>
-            <div className={styles.toggles}>
+          </Card>
+
+          <Card title="Informações exibidas">
+            <div className={styles.toggles} style={{ marginTop: 0 }}>
               {TOGGLES.map(([key, label]) => (
                 <Switch key={key} label={label} checked={Boolean(values[key])} onChange={(v) => setValue(key, v)} />
               ))}

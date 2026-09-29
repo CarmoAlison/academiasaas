@@ -14,7 +14,7 @@ export const getReceiptSettings = (academyId) =>
 const FIELDS = [
   'logo_url', 'cor', 'estilo', 'titulo', 'mensagem', 'rodape', 'cidade',
   'exibir_cnpj', 'exibir_endereco', 'exibir_contato', 'exibir_assinatura', 'exibir_selo',
-  'assinatura_nome', 'assinatura_cargo',
+  'assinatura_nome', 'assinatura_cargo', 'assinatura_modo', 'assinatura_url',
 ]
 
 export function saveReceiptSettings(academyId, values) {
@@ -22,15 +22,24 @@ export function saveReceiptSettings(academyId, values) {
   return unwrap(supabase.from('receipt_settings').upsert({ ...payload, academy_id: academyId }))
 }
 
+const IMAGE_RULES = {
+  logo: { types: /^image\/(png|jpe?g|webp)$/, typeMsg: 'Use uma imagem PNG, JPG ou WEBP', maxMb: 2 },
+  assinatura: { types: /^image\/(png|webp)$/, typeMsg: 'Use uma imagem PNG (de preferência com fundo transparente)', maxMb: 1 },
+}
+
 /**
- * Upload da logo do recibo em storage://academy-assets/{academyId}/...
+ * Upload de imagem do recibo (logo ou assinatura) em storage://academy-assets/{academyId}/...
+ * @param {string} academyId
+ * @param {File} file
+ * @param {'logo'|'assinatura'} kind
  * @returns {Promise<string>} URL pública
  */
-export async function uploadReceiptLogo(academyId, file) {
-  if (!/^image\/(png|jpe?g|webp)$/.test(file.type)) throw new Error('Use uma imagem PNG, JPG ou WEBP')
-  if (file.size > 2 * 1024 * 1024) throw new Error('A logo deve ter no máximo 2 MB')
+export async function uploadReceiptImage(academyId, file, kind) {
+  const rule = IMAGE_RULES[kind]
+  if (!rule.types.test(file.type)) throw new Error(rule.typeMsg)
+  if (file.size > rule.maxMb * 1024 * 1024) throw new Error(`A imagem deve ter no máximo ${rule.maxMb} MB`)
   const ext = file.name.split('.').pop()?.toLowerCase() || 'png'
-  const path = `${academyId}/recibo-logo-${Date.now()}.${ext}`
+  const path = `${academyId}/recibo-${kind}-${Date.now()}.${ext}`
   await unwrap(supabase.storage.from('academy-assets').upload(path, file, { upsert: true, contentType: file.type }))
   return supabase.storage.from('academy-assets').getPublicUrl(path).data.publicUrl
 }

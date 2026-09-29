@@ -1,15 +1,20 @@
+import { SIGNATURE_FONT_PATH } from './receiptModel'
+
 /**
- * Converte a logo (URL pública) em PNG data URL para embutir no PDF.
- * Aceita PNG/JPG/WEBP; se falhar (CORS, formato), o PDF sai com as iniciais.
+ * Converte uma imagem (URL pública) em PNG data URL para embutir no PDF, mantendo a transparência.
+ * Aceita PNG/JPG/WEBP; se falhar (CORS, formato), retorna null e o PDF sai sem a imagem
+ * (logo → iniciais; assinatura → só a linha).
+ * @param {string|null} url
+ * @param {number} maxSize maior lado em pixels
  */
-async function logoToDataUrl(url) {
+async function imageToDataUrl(url, maxSize) {
   if (!url) return null
   try {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.src = url
     await img.decode()
-    const size = 256
+    const size = maxSize
     const scale = Math.min(size / img.naturalWidth, size / img.naturalHeight, 1)
     const canvas = document.createElement('canvas')
     canvas.width = Math.max(1, Math.round(img.naturalWidth * scale))
@@ -27,12 +32,14 @@ async function logoToDataUrl(url) {
  * @returns {Promise<Blob>}
  */
 export async function generateReceiptPdf(model) {
-  const [{ pdf }, { ReceiptDocument }, logoDataUrl] = await Promise.all([
+  const [{ pdf }, { ReceiptDocument, registerSignatureFont }, logoDataUrl, signatureDataUrl] = await Promise.all([
     import('@react-pdf/renderer'),
     import('./ReceiptPdf'),
-    logoToDataUrl(model.logo),
+    imageToDataUrl(model.logo, 256),
+    imageToDataUrl(model.assinatura.imagem, 600), // maior resolução: traço fino da assinatura
   ])
-  return pdf(<ReceiptDocument model={model} logoDataUrl={logoDataUrl} />).toBlob()
+  if (model.assinatura.cursiva) registerSignatureFont(`${window.location.origin}${SIGNATURE_FONT_PATH}`)
+  return pdf(<ReceiptDocument model={model} logoDataUrl={logoDataUrl} signatureDataUrl={signatureDataUrl} />).toBlob()
 }
 
 /** Baixa o blob como arquivo */

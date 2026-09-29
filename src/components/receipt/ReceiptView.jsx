@@ -68,6 +68,20 @@ export default function ReceiptView({ model: m }) {
           <span className={styles.place}>{m.localData}</span>
           {m.assinatura.exibir && (
             <div className={styles.signature}>
+              {m.assinatura.imagem && (
+                <span className={styles.signMark}>
+                  <img src={m.assinatura.imagem} alt={`Assinatura de ${m.assinatura.nome}`} />
+                </span>
+              )}
+              {m.assinatura.cursiva && (
+                <span
+                  className={`${styles.signMark} ${styles.cursive}`}
+                  style={{ fontSize: `${Math.round(34 * m.assinatura.cursivaEscala)}px` }}
+                  aria-hidden
+                >
+                  {m.assinatura.cursiva}
+                </span>
+              )}
               <span className={styles.signLine} />
               <strong>{m.assinatura.nome}</strong>
               {m.assinatura.cargo && <small>{m.assinatura.cargo}</small>}

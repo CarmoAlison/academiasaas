@@ -303,6 +303,8 @@ create table if not exists public.receipt_settings (
   exibir_selo       boolean not null default true,
   assinatura_nome   text,
   assinatura_cargo  text default 'Responsável financeiro',
+  assinatura_modo   text not null default 'linha' check (assinatura_modo in ('linha', 'imagem', 'cursiva')),
+  assinatura_url    text,             -- PNG da assinatura (modo 'imagem')
   updated_at        timestamptz not null default now()
 );
 

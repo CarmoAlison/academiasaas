@@ -1,6 +1,13 @@
 /* Documento impresso: cores fixas de "papel", independentes do tema do sistema.
    A cor de destaque vem da personalização da academia (--accent*). */
 
+/* Fonte cursiva da assinatura — Great Vibes (SIL OFL 1.1), em public/fonts */
+@font-face {
+  font-family: 'Assinatura';
+  src: url('/fonts/GreatVibes-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
 .paper {
   --ink: #111827;
   --ink-muted: #6b7280;
@@ -234,6 +241,30 @@
   align-items: center;
   min-width: 240px;
   text-align: center;
+}
+
+/* Assinatura acima da linha (imagem PNG ou nome em letra cursiva) */
+.signMark {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 56px;
+  margin-bottom: -6px; /* a assinatura "encosta" na linha, como feita à mão */
+}
+
+.signMark img {
+  max-width: 220px;
+  max-height: 56px;
+  object-fit: contain;
+}
+
+.cursive {
+  font-family: 'Assinatura', cursive;
+  font-size: 34px;
+  line-height: 1;
+  color: #1e3a8a;
+  white-space: nowrap;
 }
 
 .signLine {
