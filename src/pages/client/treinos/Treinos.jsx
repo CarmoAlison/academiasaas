@@ -43,9 +43,16 @@ function DayCard({ workout, day, log, defaultOpen }) {
             {dayLabel(day.dia_semana)}
             {day.nome ? ` — ${day.nome}` : ''}
           </strong>
-          <span className={styles.muted}>{exercisesLabel(day.items.length)}</span>
+          <span className={styles.muted}>
+            {log ? 'Concluído · ' : isToday ? 'Hoje · ' : ''}
+            {exercisesLabel(day.items.length)}
+          </span>
         </span>
-        {log ? <Badge tone="success">Concluído</Badge> : isToday ? <Badge tone="info">Hoje</Badge> : null}
+        {(log || isToday) && (
+          <span className={styles.dayBadge}>
+            {log ? <Badge tone="success">Concluído</Badge> : <Badge tone="info">Hoje</Badge>}
+          </span>
+        )}
         {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
       </button>
 
