@@ -24,11 +24,11 @@ import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { planService, unitService } from '../../../services/catalogServices'
-import { listPayments } from '../../../services/paymentService'
+import { listStudentPaymentsAdmin } from '../../../services/paymentService'
 import { createStudent, getStudent, removeStudent, updateStudent } from '../../../services/studentService'
-import { listWorkouts } from '../../../services/workoutService'
+import { listWorkoutsByStudent } from '../../../services/workoutService'
 import { STUDENT_STATUS, UFS } from '../../../utils/constants'
-import { formatCEP, formatCPF, formatCurrency, formatDate, formatPhone, paymentStatus, toISODate } from '../../../utils/formatters'
+import { formatCEP, formatCPF, formatCurrency, formatDate, formatPhone, toISODate } from '../../../utils/formatters'
 import { rules } from '../../../utils/validators'
 import styles from './AlunoForm.module.css'
 
@@ -59,18 +59,19 @@ const toForm = (s) => ({
 /** Painel lateral do aluno: senha, treinos e pagamentos */
 function StudentSide({ student, academyId }) {
   const { can } = usePermissions()
+  // só os registros deste aluno (não a academia inteira)
   const workouts = useQuery({
-    queryKey: ['workouts', academyId],
-    queryFn: () => listWorkouts(academyId),
+    queryKey: ['workouts', academyId, 'student', student.id],
+    queryFn: () => listWorkoutsByStudent(academyId, student.id),
     enabled: can('treinos.ver'),
   })
   const payments = useQuery({
-    queryKey: ['payments', academyId],
-    queryFn: () => listPayments(academyId),
+    queryKey: ['payments', academyId, 'student', student.id],
+    queryFn: () => listStudentPaymentsAdmin(academyId, student.id, 5),
     enabled: can('financeiro.ver'),
   })
-  const myWorkouts = (workouts.data ?? []).filter((w) => w.student_id === student.id && w.ativo)
-  const myPayments = (payments.data ?? []).filter((p) => p.student_id === student.id).slice(0, 5)
+  const myWorkouts = (workouts.data ?? []).filter((w) => w.vigente)
+  const myPayments = payments.data ?? []
 
   return (
     <div className={styles.side}>
@@ -111,7 +112,7 @@ function StudentSide({ student, academyId }) {
                 <li key={p.id}>
                   <span>{formatDate(p.vencimento)}</span>
                   <strong>{formatCurrency(p.valor)}</strong>
-                  <StatusBadge status={paymentStatus(p)} />
+                  <StatusBadge status={p.situacao} />
                 </li>
               ))}
             </ul>

@@ -1,5 +1,6 @@
 import { sortDays } from '../utils/workoutDays'
-import { nowISO, supabase, unwrap } from './supabaseClient'
+import { applySearch, applySort, pageRange } from './paging'
+import { nowISO, supabase, unwrap, unwrapWithCount } from './supabaseClient'
 
 const SELECT = `
   id, academy_id, student_id, professor_id, nome, objetivo, data_inicio, data_fim, ativo, created_at,
@@ -19,6 +20,38 @@ const normalize = (w) => ({
   ...w,
   days: sortDays(w.days ?? []).map((d) => ({ ...d, items: [...(d.items ?? [])].sort((a, b) => a.ordem - b.ordem) })),
 })
+
+const WORKOUT_SORT = {
+  nome: 'nome',
+  aluno_nome: 'aluno_nome',
+  objetivo: 'objetivo',
+  professor_nome: 'professor_nome',
+  data_fim: 'data_fim',
+  total_dias: 'total_dias',
+  vigente: 'vigente',
+}
+
+/** Página de treinos (view v_workouts): situação vigentes | encerrados | todos */
+export function listWorkoutsPage(academyId, { page, pageSize, search, sort, filters = {} }) {
+  let query = supabase.from('v_workouts').select('*', { count: 'exact' }).eq('academy_id', academyId)
+  if (filters.situacao === 'vigentes') query = query.eq('vigente', true)
+  if (filters.situacao === 'encerrados') query = query.eq('vigente', false)
+  if (filters.student_id) query = query.eq('student_id', filters.student_id)
+  query = applySearch(query, search, { text: ['nome', 'aluno_nome', 'objetivo', 'professor_nome'] })
+  query = applySort(query, sort, WORKOUT_SORT, { column: 'created_at', ascending: false })
+  return unwrapWithCount(query.range(...pageRange(page, pageSize)))
+}
+
+/** Treinos de um aluno (painel lateral do cadastro) */
+export const listWorkoutsByStudent = (academyId, studentId) =>
+  unwrap(
+    supabase
+      .from('v_workouts')
+      .select('*')
+      .eq('academy_id', academyId)
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: false }),
+  )
 
 export async function listWorkouts(academyId) {
   const rows = await unwrap(

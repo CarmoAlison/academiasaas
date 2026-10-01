@@ -63,14 +63,23 @@ export default function DataTable({
   total,
   page: serverPage,
   onPageChange,
+  search: serverSearchValue,
+  onSearchChange,
+  sort: serverSortValue,
+  onSortChange,
   emptyTitle = 'Nenhum registro encontrado',
   emptyDescription,
   emptyAction,
 }) {
   const serverMode = typeof onPageChange === 'function'
-  const [search, setSearch] = useState('')
-  const debouncedSearch = useDebounce(search, 200)
-  const [sort, setSort] = useState(initialSort ?? null)
+  // no modo servidor, busca e ordenação são controladas por quem usa a tabela (ex.: useServerTable)
+  const serverSearch = serverMode && typeof onSearchChange === 'function'
+  const serverSort = serverMode && typeof onSortChange === 'function'
+  const [localSearch, setLocalSearch] = useState('')
+  const search = serverSearch ? (serverSearchValue ?? '') : localSearch
+  const debouncedSearch = useDebounce(localSearch, 200)
+  const [localSort, setLocalSort] = useState(initialSort ?? null)
+  const sort = serverSort ? (serverSortValue ?? null) : localSort
   const [localPage, setLocalPage] = useState(0)
 
   const processed = useMemo(() => {
@@ -109,16 +118,24 @@ export default function DataTable({
 
   const goTo = (p) => (serverMode ? onPageChange(p) : setLocalPage(p))
 
+  const canSort = !serverMode || serverSort
   const toggleSort = (col) => {
-    if (serverMode || col.sortable === false) return
-    setSort((prev) => {
-      if (prev?.key !== col.key) return { key: col.key, dir: 'asc' }
-      if (prev.dir === 'asc') return { key: col.key, dir: 'desc' }
-      return null
-    })
+    if (!canSort || col.sortable === false) return
+    const next = sort?.key !== col.key ? { key: col.key, dir: 'asc' } : sort.dir === 'asc' ? { key: col.key, dir: 'desc' } : null
+    if (serverSort) onSortChange(next)
+    else setLocalSort(next)
   }
 
-  const showToolbar = (searchable && !serverMode) || filters || actions
+  const showSearch = searchable && (!serverMode || serverSearch)
+  const onSearchInput = (value) => {
+    if (serverSearch) onSearchChange(value)
+    else {
+      setLocalSearch(value)
+      setLocalPage(0)
+    }
+  }
+  const activeSearch = serverSearch ? search : debouncedSearch
+  const showToolbar = showSearch || filters || actions
   const from = totalRows ? page * pageSize + 1 : 0
   const to = Math.min(totalRows, (page + 1) * pageSize)
 
@@ -126,17 +143,14 @@ export default function DataTable({
     <div className={styles.wrapper}>
       {showToolbar && (
         <div className={styles.toolbar}>
-          {searchable && !serverMode && (
+          {showSearch && (
             <label className={styles.search}>
               <Search size={16} aria-hidden />
               <input
                 type="search"
                 value={search}
                 placeholder={searchPlaceholder}
-                onChange={(e) => {
-                  setSearch(e.target.value)
-                  setLocalPage(0)
-                }}
+                onChange={(e) => onSearchInput(e.target.value)}
                 aria-label="Buscar"
               />
             </label>
@@ -151,7 +165,7 @@ export default function DataTable({
           <thead>
             <tr>
               {columns.map((col) => {
-                const sortable = !serverMode && col.sortable !== false && !!col.header
+                const sortable = canSort && col.sortable !== false && !!col.header
                 const active = sort?.key === col.key
                 const SortIcon = active ? (sort.dir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown
                 return (
@@ -196,9 +210,9 @@ export default function DataTable({
         {!loading && rows.length === 0 && (
           <EmptyState
             compact
-            title={debouncedSearch ? 'Nenhum resultado para a busca' : emptyTitle}
-            description={debouncedSearch ? 'Tente outros termos.' : emptyDescription}
-            action={debouncedSearch ? null : emptyAction}
+            title={activeSearch ? 'Nenhum resultado para a busca' : emptyTitle}
+            description={activeSearch ? 'Tente outros termos.' : emptyDescription}
+            action={activeSearch ? null : emptyAction}
           />
         )}
       </div>

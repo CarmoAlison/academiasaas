@@ -13,7 +13,7 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import QueryError from '../../../components/feedback/QueryError'
 import ReceiptModal from '../../../components/receipt/ReceiptModal'
 import {
@@ -30,25 +30,30 @@ import {
   StatusBadge,
   Tooltip,
   useConfirm,
+  useToast,
 } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { usePermissions } from '../../../hooks/usePermissions'
+import { useServerTable } from '../../../hooks/useServerTable'
 import { planService } from '../../../services/catalogServices'
 import {
   cancelPayment,
   createPayment,
+  exportPayments,
   generateMonthlyCharges,
-  listPayments,
+  listPaymentsPage,
   markPaid,
+  paymentsSummary,
   removePayment,
   reopenPayment,
 } from '../../../services/paymentService'
 import { listStudentOptions } from '../../../services/studentService'
 import { PAYMENT_METHODS } from '../../../utils/constants'
 import { exportCSV } from '../../../utils/csv'
-import { addDays, formatCPF, formatCurrency, formatDate, paymentStatus, toISODate } from '../../../utils/formatters'
+import { errorMessage } from '../../../utils/errors'
+import { addDays, formatCPF, formatCurrency, formatDate, toISODate } from '../../../utils/formatters'
 import { rules } from '../../../utils/validators'
 
 const monthRange = (ym) => {
@@ -136,7 +141,7 @@ function PayModal({ payment, onClose, onPaid, invalidate }) {
       }
     >
       <p style={{ marginBottom: 16 }}>
-        {payment.student?.profile?.nome} — <strong>{formatCurrency(payment.valor)}</strong> (venc. {formatDate(payment.vencimento)})
+        {payment.aluno_nome} — <strong>{formatCurrency(payment.valor)}</strong> (venc. {formatDate(payment.vencimento)})
       </p>
       <Select label="Forma de pagamento" options={PAYMENT_METHODS} value={forma} onChange={(e) => setForma(e.target.value)} />
     </Modal>
@@ -147,19 +152,28 @@ export default function Financeiro() {
   const { academyId } = useTenant()
   const { can } = usePermissions()
   const [confirm, confirmDialog] = useConfirm()
-  const [mes, setMes] = useState(toISODate().slice(0, 7))
-  const [status, setStatus] = useState('')
+  const toast = useToast()
   const [newOpen, setNewOpen] = useState(false)
   const [paying, setPaying] = useState(null)
   const [receiptFor, setReceiptFor] = useState(null)
+  const [exporting, setExporting] = useState(false)
 
-  const range = monthRange(mes)
-  const yesterday = toISODate(addDays(new Date(), -1))
-  const query = useQuery({ queryKey: ['payments', academyId, mes], queryFn: () => listPayments(academyId, range) })
-  const overdue = useQuery({
-    queryKey: ['payments', academyId, 'overdue'],
-    queryFn: () => listPayments(academyId, { ate: yesterday, status: 'pendente' }),
+  // tabela paginada no servidor; o mês e a situação são filtros
+  const { query, tableProps, filters, setFilter, search } = useServerTable({
+    queryKey: ['payments', academyId],
+    fetchPage: ({ filters: f, ...params }) =>
+      listPaymentsPage(academyId, { ...params, filters: { ...monthRange(f.mes), situacao: f.situacao } }),
+    pageSize: 25,
+    initialSort: { key: 'vencimento', dir: 'asc' },
+    initialFilters: { mes: toISODate().slice(0, 7), situacao: '' },
   })
+  const mes = filters.mes
+  const range = monthRange(mes)
+  const summary = useQuery({
+    queryKey: ['payments', academyId, 'summary', mes],
+    queryFn: () => paymentsSummary(academyId, range.de, range.ate),
+  })
+  const s = summary.data
   const invalidate = [['payments', academyId], ['admin-dashboard', academyId]]
 
   const reopenMutation = useMutationToast(reopenPayment, { success: 'Pagamento reaberto', invalidate })
@@ -170,29 +184,27 @@ export default function Financeiro() {
     invalidate,
   })
 
-  const rows = useMemo(
-    () => (query.data ?? []).map((p) => ({ ...p, situacao: paymentStatus(p) })).filter((p) => !status || p.situacao === status),
-    [query.data, status],
-  )
-
-  const all = (query.data ?? []).map((p) => ({ ...p, situacao: paymentStatus(p) }))
-  const sum = (list) => list.reduce((acc, p) => acc + Number(p.valor), 0)
-  const recebido = sum(all.filter((p) => p.situacao === 'pago'))
-  const pendente = sum(all.filter((p) => p.situacao === 'pendente'))
-  const atrasados = overdue.data ?? []
-
-  const onExport = () =>
-    exportCSV(`pagamentos-${mes}`, [
-      { header: 'Aluno', value: (p) => p.student?.profile?.nome },
-      { header: 'CPF', value: (p) => formatCPF(p.student?.profile?.cpf) },
-      { header: 'Descrição', value: (p) => p.descricao },
-      { header: 'Plano', value: (p) => p.plan?.nome },
-      { header: 'Valor', value: (p) => Number(p.valor).toFixed(2).replace('.', ',') },
-      { header: 'Vencimento', value: (p) => formatDate(p.vencimento) },
-      { header: 'Status', value: (p) => p.situacao },
-      { header: 'Pago em', value: (p) => (p.pago_em ? formatDate(p.pago_em) : '') },
-      { header: 'Forma', value: (p) => PAYMENT_METHODS.find((m) => m.value === p.forma_pagamento)?.label ?? '' },
-    ], rows)
+  const onExport = async () => {
+    setExporting(true)
+    try {
+      const rows = await exportPayments(academyId, { search, filters: { ...range, situacao: filters.situacao } })
+      exportCSV(`pagamentos-${mes}`, [
+        { header: 'Aluno', value: (p) => p.aluno_nome },
+        { header: 'CPF', value: (p) => formatCPF(p.aluno_cpf) },
+        { header: 'Descrição', value: (p) => p.descricao },
+        { header: 'Plano', value: (p) => p.plano_nome },
+        { header: 'Valor', value: (p) => Number(p.valor).toFixed(2).replace('.', ',') },
+        { header: 'Vencimento', value: (p) => formatDate(p.vencimento) },
+        { header: 'Status', value: (p) => p.situacao },
+        { header: 'Pago em', value: (p) => (p.pago_em ? formatDate(p.pago_em) : '') },
+        { header: 'Forma', value: (p) => PAYMENT_METHODS.find((m) => m.value === p.forma_pagamento)?.label ?? '' },
+      ], rows)
+    } catch (err) {
+      toast.error(errorMessage(err))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   if (query.isError) return <QueryError error={query.error} onRetry={query.refetch} />
 
@@ -205,7 +217,7 @@ export default function Financeiro() {
         actions={
           <>
             {can('financeiro.exportar') && (
-              <Button variant="outline" icon={Download} onClick={onExport} disabled={!rows.length}>
+              <Button variant="outline" icon={Download} onClick={onExport} loading={exporting} disabled={!tableProps.total}>
                 Exportar CSV
               </Button>
             )}
@@ -229,33 +241,37 @@ export default function Financeiro() {
       />
 
       <StatGrid>
-        <StatCard label="Previsto no mês" value={formatCurrency(sum(all.filter((p) => p.status !== 'cancelado')))} icon={DollarSign} loading={query.isPending} />
-        <StatCard label="Recebido" value={formatCurrency(recebido)} icon={CheckCircle2} tone="success" loading={query.isPending} />
-        <StatCard label="A receber" value={formatCurrency(pendente)} icon={Clock} tone="warning" loading={query.isPending} />
+        <StatCard label="Previsto no mês" value={formatCurrency(s?.previsto)} icon={DollarSign} loading={summary.isPending} />
+        <StatCard label="Recebido" value={formatCurrency(s?.recebido)} icon={CheckCircle2} tone="success" loading={summary.isPending} />
+        <StatCard
+          label="A receber"
+          value={formatCurrency(s?.a_receber)}
+          icon={Clock}
+          tone="warning"
+          loading={summary.isPending}
+          hint={Number(s?.atrasado_mes) > 0 ? `+ ${formatCurrency(s.atrasado_mes)} já vencidos neste mês` : undefined}
+        />
         <StatCard
           label="Inadimplência"
-          value={formatCurrency(sum(atrasados))}
+          value={formatCurrency(s?.inadimplencia)}
           icon={AlertTriangle}
           tone="danger"
-          loading={overdue.isPending}
-          hint={`${new Set(atrasados.map((p) => p.student_id)).size} aluno(s) com parcelas vencidas`}
+          loading={summary.isPending}
+          hint={`${s?.alunos_em_atraso ?? 0} aluno(s) com parcelas vencidas`}
         />
       </StatGrid>
 
       <DataTable
-        loading={query.isPending}
-        data={rows}
-        searchKeys={['student.profile.nome', 'student.profile.cpf', 'descricao']}
-        searchPlaceholder="Buscar aluno"
-        initialSort={{ key: 'vencimento', dir: 'asc' }}
+        {...tableProps}
+        searchPlaceholder="Buscar aluno ou CPF"
         filters={
           <>
-            <Input type="month" aria-label="Mês" value={mes} onChange={(e) => e.target.value && setMes(e.target.value)} />
+            <Input type="month" aria-label="Mês" value={mes} onChange={(e) => e.target.value && setFilter('mes', e.target.value)} />
             <Select
               aria-label="Status"
               placeholder="Todos"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              value={filters.situacao}
+              onChange={(e) => setFilter('situacao', e.target.value)}
               options={[
                 { value: 'pendente', label: 'Pendente' },
                 { value: 'atrasado', label: 'Atrasado' },
@@ -268,9 +284,9 @@ export default function Financeiro() {
         emptyTitle="Nenhuma cobrança neste mês"
         emptyDescription='Use "Gerar mensalidades" para criar as cobranças dos alunos ativos com plano.'
         columns={[
-          { key: 'student.profile.nome', header: 'Aluno', render: (p) => <strong>{p.student?.profile?.nome}</strong> },
-          { key: 'descricao', header: 'Descrição', render: (p) => `${p.descricao ?? 'Cobrança'}${p.plan ? ` · ${p.plan.nome}` : ''}` },
-          { key: 'valor', header: 'Valor', align: 'right', sortValue: (p) => Number(p.valor), render: (p) => formatCurrency(p.valor) },
+          { key: 'aluno_nome', header: 'Aluno', render: (p) => <strong>{p.aluno_nome}</strong> },
+          { key: 'descricao', header: 'Descrição', render: (p) => `${p.descricao ?? 'Cobrança'}${p.plano_nome ? ` · ${p.plano_nome}` : ''}` },
+          { key: 'valor', header: 'Valor', align: 'right', render: (p) => formatCurrency(p.valor) },
           { key: 'vencimento', header: 'Vencimento', render: (p) => formatDate(p.vencimento) },
           { key: 'situacao', header: 'Status', render: (p) => <StatusBadge status={p.situacao} /> },
           {
@@ -312,7 +328,7 @@ export default function Financeiro() {
                           icon={XCircle}
                           aria-label="Cancelar"
                           onClick={async () => {
-                            if (await confirm({ title: 'Cancelar cobrança', message: `Cancelar a cobrança de ${p.student?.profile?.nome}?`, danger: true, confirmLabel: 'Cancelar cobrança' })) {
+                            if (await confirm({ title: 'Cancelar cobrança', message: `Cancelar a cobrança de ${p.aluno_nome}?`, danger: true, confirmLabel: 'Cancelar cobrança' })) {
                               cancelMutation.mutate(p.id)
                             }
                           }}

@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -6,38 +5,45 @@ import QueryError from '../../../components/feedback/QueryError'
 import { Badge, Button, DataTable, PageHeader, Select, Tabs } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { usePermissions } from '../../../hooks/usePermissions'
-import { listWorkouts } from '../../../services/workoutService'
-import { formatDate, toISODate } from '../../../utils/formatters'
+import { useServerTable } from '../../../hooks/useServerTable'
+import { listWorkoutsPage } from '../../../services/workoutService'
+import { formatDate } from '../../../utils/formatters'
 import { summarizeDays } from '../../../utils/workoutDays'
 import ExerciciosTab from './ExerciciosTab'
+
+/** Dias da view (array de dia_semana + total) no formato de summarizeDays */
+const daysOf = (w) => [
+  ...(w.dias ?? []).map((d) => ({ dia_semana: d })),
+  ...Array.from({ length: Math.max(0, (w.total_dias ?? 0) - (w.dias?.length ?? 0)) }, () => ({ dia_semana: null })),
+]
 
 function WorkoutsTab() {
   const { academyId } = useTenant()
   const { can } = usePermissions()
   const navigate = useNavigate()
-  const [situacao, setSituacao] = useState('ativos')
-  const query = useQuery({ queryKey: ['workouts', academyId], queryFn: () => listWorkouts(academyId) })
-  const today = toISODate()
 
-  const vigente = (w) => w.ativo && (!w.data_fim || w.data_fim >= today)
-  const rows = (query.data ?? []).filter((w) => (situacao === 'ativos' ? vigente(w) : situacao === 'encerrados' ? !vigente(w) : true))
+  // paginação, busca, ordenação e filtro de situação no servidor
+  const { query, tableProps, filters, setFilter } = useServerTable({
+    queryKey: ['workouts', academyId],
+    fetchPage: (params) => listWorkoutsPage(academyId, params),
+    pageSize: 20,
+    initialFilters: { situacao: 'vigentes' },
+  })
 
   if (query.isError) return <QueryError error={query.error} onRetry={query.refetch} />
 
   return (
     <DataTable
-      loading={query.isPending}
-      data={rows}
-      searchPlaceholder="Buscar por aluno, treino ou objetivo"
-      searchKeys={['nome', 'objetivo', 'student.profile.nome', 'professor.nome']}
+      {...tableProps}
+      searchPlaceholder="Buscar por aluno, treino, objetivo ou professor"
       onRowClick={(w) => navigate(`/admin/treinos/${w.id}`)}
       filters={
         <Select
           aria-label="Situação"
-          value={situacao}
-          onChange={(e) => setSituacao(e.target.value)}
+          value={filters.situacao}
+          onChange={(e) => setFilter('situacao', e.target.value)}
           options={[
-            { value: 'ativos', label: 'Vigentes' },
+            { value: 'vigentes', label: 'Vigentes' },
             { value: 'encerrados', label: 'Encerrados/inativos' },
             { value: 'todos', label: 'Todos' },
           ]}
@@ -47,24 +53,19 @@ function WorkoutsTab() {
       emptyAction={can('treinos.criar') && <Button icon={Plus} to="/admin/treinos/novo">Montar treino</Button>}
       columns={[
         { key: 'nome', header: 'Treino', render: (w) => <strong>{w.nome}</strong> },
-        { key: 'student.profile.nome', header: 'Aluno', render: (w) => w.student?.profile?.nome ?? '—' },
-        {
-          key: 'days',
-          header: 'Dias',
-          sortValue: (w) => w.days.length,
-          render: (w) => <span title={w.days.map((d) => d.nome).filter(Boolean).join(' · ')}>{summarizeDays(w.days)}</span>,
-        },
+        { key: 'aluno_nome', header: 'Aluno', render: (w) => w.aluno_nome ?? '—' },
+        { key: 'total_dias', header: 'Dias', render: (w) => summarizeDays(daysOf(w)) },
         { key: 'objetivo', header: 'Objetivo', render: (w) => w.objetivo ?? '—' },
-        { key: 'professor.nome', header: 'Professor', render: (w) => w.professor?.nome ?? '—' },
+        { key: 'professor_nome', header: 'Professor', render: (w) => w.professor_nome ?? '—' },
         {
           key: 'data_fim',
           header: 'Período',
           render: (w) => (w.data_inicio || w.data_fim ? `${formatDate(w.data_inicio)} → ${formatDate(w.data_fim)}` : '—'),
         },
         {
-          key: 'ativo',
+          key: 'vigente',
           header: 'Situação',
-          render: (w) => <Badge tone={vigente(w) ? 'success' : 'neutral'}>{vigente(w) ? 'Vigente' : 'Encerrado'}</Badge>,
+          render: (w) => <Badge tone={w.vigente ? 'success' : 'neutral'}>{w.vigente ? 'Vigente' : 'Encerrado'}</Badge>,
         },
       ]}
     />

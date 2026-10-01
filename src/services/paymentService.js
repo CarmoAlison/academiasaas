@@ -1,5 +1,50 @@
 import { toISODate } from '../utils/formatters'
-import { nowISO, supabase, unwrap } from './supabaseClient'
+import { applySearch, applySort, pageRange } from './paging'
+import { nowISO, supabase, unwrap, unwrapWithCount } from './supabaseClient'
+
+const PAYMENT_SORT = {
+  aluno_nome: 'aluno_nome',
+  valor: 'valor',
+  vencimento: 'vencimento',
+  situacao: 'situacao',
+  pago_em: 'pago_em',
+  descricao: 'descricao',
+}
+
+/** Consulta de pagamentos (view v_payments) com período, situação e busca */
+function paymentsQuery(academyId, { search = '', filters = {} } = {}, options) {
+  let query = supabase.from('v_payments').select('*', options).eq('academy_id', academyId)
+  if (filters.de) query = query.gte('vencimento', filters.de)
+  if (filters.ate) query = query.lte('vencimento', filters.ate)
+  if (filters.situacao) query = query.eq('situacao', filters.situacao)
+  if (filters.student_id) query = query.eq('student_id', filters.student_id)
+  return applySearch(query, search, { text: ['aluno_nome', 'descricao'], digits: ['aluno_cpf'] })
+}
+
+/** Página de pagamentos (paginação, busca e ordenação no servidor) */
+export function listPaymentsPage(academyId, { page, pageSize, search, sort, filters }) {
+  const query = applySort(paymentsQuery(academyId, { search, filters }, { count: 'exact' }), sort, PAYMENT_SORT, {
+    column: 'vencimento',
+    ascending: true,
+  })
+  return unwrapWithCount(query.range(...pageRange(page, pageSize)))
+}
+
+/** Pagamentos do filtro atual para exportação (até 10 mil) */
+export const exportPayments = (academyId, { search, filters }) =>
+  unwrap(paymentsQuery(academyId, { search, filters }).order('vencimento').limit(10000))
+
+/** Totais do período (cards do financeiro), calculados no banco */
+export const paymentsSummary = (academyId, de, ate) =>
+  unwrap(supabase.rpc('payments_summary', { p_academy: academyId, p_de: de, p_ate: ate }))
+
+/** Últimos pagamentos de um aluno (painel lateral do cadastro) */
+export const listStudentPaymentsAdmin = (academyId, studentId, limit = 5) =>
+  unwrap(
+    paymentsQuery(academyId, { filters: { student_id: studentId } })
+      .order('vencimento', { ascending: false })
+      .limit(limit),
+  )
 
 const SELECT = `
   id, academy_id, student_id, plan_id, descricao, valor, vencimento, pago_em, forma_pagamento, status, recibo_numero, created_at,

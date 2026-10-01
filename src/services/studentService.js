@@ -1,5 +1,6 @@
 import { onlyDigits } from '../utils/formatters'
-import { nowISO, supabase, unwrap } from './supabaseClient'
+import { applySearch, applySort, pageRange } from './paging'
+import { nowISO, supabase, unwrap, unwrapWithCount } from './supabaseClient'
 
 const SELECT = `
   id, academy_id, profile_id, unit_id, plan_id, data_matricula, status, data_nascimento, responsavel,
@@ -24,6 +25,40 @@ const normalize = (values) => ({
   telefone: onlyDigits(values.telefone),
   cep: onlyDigits(values.cep),
 })
+
+const STUDENT_SORT = {
+  nome: 'nome',
+  cpf: 'cpf',
+  telefone: 'telefone',
+  plano_nome: 'plano_nome',
+  data_matricula: 'data_matricula',
+  status: 'status',
+}
+
+/** Monta a consulta de alunos (view v_students) com busca e filtros */
+function studentsQuery(academyId, { search = '', filters = {} } = {}, options) {
+  let query = supabase.from('v_students').select('*', options).eq('academy_id', academyId)
+  if (filters.status) query = query.eq('status', filters.status)
+  if (filters.plan_id) query = query.eq('plan_id', filters.plan_id)
+  if (filters.unit_id) query = query.eq('unit_id', filters.unit_id)
+  return applySearch(query, search, { text: ['nome', 'email_contato'], digits: ['cpf', 'telefone'] })
+}
+
+/**
+ * Página de alunos (paginação, busca e ordenação no servidor)
+ * @returns {Promise<{ data: object[], count: number }>}
+ */
+export function listStudentsPage(academyId, { page, pageSize, search, sort, filters }) {
+  const query = applySort(studentsQuery(academyId, { search, filters }, { count: 'exact' }), sort, STUDENT_SORT, {
+    column: 'created_at',
+    ascending: false,
+  })
+  return unwrapWithCount(query.range(...pageRange(page, pageSize)))
+}
+
+/** Todos os alunos do filtro atual (exportação CSV), até 10 mil */
+export const exportStudents = (academyId, { search, filters }) =>
+  unwrap(studentsQuery(academyId, { search, filters }).order('nome').limit(10000))
 
 /** @param {string} academyId */
 export const listStudents = (academyId) =>
