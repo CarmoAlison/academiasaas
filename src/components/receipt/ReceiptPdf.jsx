@@ -12,6 +12,9 @@ export function registerSignatureFont(src) {
   signatureFontSrc = src
 }
 
+/** A fonte cursiva já foi registrada (contrato usa a mesma) */
+export const isSignatureFontRegistered = () => Boolean(signatureFontSrc)
+
 /** Helvetica (fonte padrão do PDF) não tem emojis: remove-os */
 const clean = (s) => String(s ?? '').replace(/\p{Extended_Pictographic}|️|‍/gu, '').trim()
 

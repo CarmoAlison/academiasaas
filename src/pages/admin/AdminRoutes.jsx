@@ -31,6 +31,7 @@ const Assinatura = lazy(() => import('./assinatura/Assinatura'))
 const ConfiguracoesAcademia = lazy(() => import('./configuracoes/ConfiguracoesAcademia'))
 const Checkin = lazy(() => import('./checkin/Checkin'))
 const WhatsappPanel = lazy(() => import('./whatsapp/WhatsappPanel'))
+const Relatorios = lazy(() => import('./relatorios/Relatorios'))
 
 const guard = (perm, element) => <PermissionGuard perm={perm}>{element}</PermissionGuard>
 
@@ -65,6 +66,8 @@ export const adminRoutes = (
 
     <Route path="financeiro" element={guard('financeiro.ver', <Financeiro />)} />
     <Route path="financeiro/recibo" element={guard('financeiro.editar', <PersonalizarRecibo />)} />
+
+    <Route path="relatorios" element={guard('relatorios.ver', <Relatorios />)} />
 
     <Route path="perfil-acesso" element={<PermissionGuard any={['perfis.ver', 'equipe.ver']}><PerfilAcesso /></PermissionGuard>} />
     <Route path="perfil-acesso/gerenciar" element={guard('perfis.ver', <GerenciarPerfil />)} />

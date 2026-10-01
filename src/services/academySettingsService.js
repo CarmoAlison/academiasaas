@@ -20,6 +20,15 @@ export const ACADEMY_DEFAULTS = {
   msg_atraso: null,
   msg_recibo: null,
   msg_sumido: null,
+  // Identidade visual
+  cor_primaria: null,
+  logo_url: null,
+  // Contrato
+  contrato_titulo: null,
+  contrato_texto: null,
+  contrato_automatico: false,
+  // Primeiro acesso
+  onboarding_oculto: false,
 }
 
 /** Configurações efetivas (padrões + o que a academia salvou) */
@@ -33,3 +42,11 @@ export function saveAcademySettings(academyId, values) {
   const payload = Object.fromEntries(Object.keys(ACADEMY_DEFAULTS).map((k) => [k, values[k] === '' ? null : values[k]]))
   return unwrap(supabase.from('academy_settings').upsert({ ...payload, academy_id: academyId }))
 }
+
+/** Atualiza só algumas chaves (ex.: ocultar o checklist de primeiro acesso) */
+export function updateAcademySettings(academyId, partial) {
+  return unwrap(supabase.from('academy_settings').upsert({ ...partial, academy_id: academyId }))
+}
+
+/** Checklist do primeiro acesso (somente Admin) */
+export const onboardingStatus = (academyId) => unwrap(supabase.rpc('onboarding_status', { p_academy: academyId }))

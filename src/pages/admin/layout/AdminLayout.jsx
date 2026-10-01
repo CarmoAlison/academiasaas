@@ -5,6 +5,7 @@ import ThemeToggle from '../../../components/shell/ThemeToggle'
 import UserMenu from '../../../components/shell/UserMenu'
 import { Badge, Button } from '../../../components/ui'
 import { useAuth, useTenant } from '../../../hooks/useAuth'
+import { useBrand } from '../../../hooks/useBrand'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { setPreferredArea } from '../../../routes/accessOptions'
 import styles from './AdminLayout.module.css'
@@ -16,6 +17,7 @@ export default function AdminLayout() {
   const { academy, membership, impersonating, setAcademy } = useTenant()
   const { canAny, roles } = usePermissions()
   const navigate = useNavigate()
+  const brand = useBrand()
 
   // em "acessar como" o usuário age como Super Admin, não com o perfil que tenha na academia
   const profile = impersonating ? null : membership?.profile
@@ -30,7 +32,7 @@ export default function AdminLayout() {
 
   return (
     <AppShell
-      brand={{ title: academy?.nome ?? 'Academia', subtitle: 'Gestão', logo: academy?.logo_url }}
+      brand={{ title: academy?.nome ?? 'Academia', subtitle: 'Gestão', logo: brand.logo }}
       groups={visibleNav(canAny)}
       topbarLeft={
         <div className={styles.topLeft}>

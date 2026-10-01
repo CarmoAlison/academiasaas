@@ -24,6 +24,8 @@ const STATUS_TONES = {
   cancelado: ['neutral', 'Cancelado'],
   reservado: ['info', 'Reservado'],
   presente: ['success', 'Presente'],
+  aceito: ['success', 'Aceito'],
+  espera: ['warning', 'Na fila'],
   falta: ['danger', 'Falta'],
   insert: ['success', 'Criação'],
   update: ['info', 'Alteração'],

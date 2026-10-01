@@ -1,15 +1,23 @@
 import { useQuery } from '@tanstack/react-query'
-import { RotateCcw, Save } from 'lucide-react'
-import { useEffect, useMemo } from 'react'
+import { Copy, ImageIcon, RotateCcw, Save, Upload, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
 import QueryError from '../../../components/feedback/QueryError'
-import { Button, Card, FormActions, FormGrid, FormSection, FullRow, Input, PageHeader, Switch, Textarea } from '../../../components/ui'
-import { useTenant } from '../../../hooks/useAuth'
+import { Button, Card, FormActions, FormGrid, FormSection, FullRow, Input, PageHeader, Switch, Textarea, useToast } from '../../../components/ui'
+import { useAuth, useTenant } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { getAcademySettings, saveAcademySettings } from '../../../services/academySettingsService'
+import { CONTRACT_VARIABLES, defaultContractText } from '../../../services/contractService'
+import { uploadReceiptImage } from '../../../services/receiptService'
+import { isHexColor, readableOn, tint } from '../../../utils/color'
+import { errorMessage } from '../../../utils/errors'
 import { rules } from '../../../utils/validators'
 import { DEFAULT_TEMPLATES, TEMPLATE_KEYS, TEMPLATE_VARIABLES } from '../../../utils/whatsapp'
+import styles from './Configuracoes.module.css'
+
+const DEFAULT_COLOR = '#006EB8'
+const SWATCHES = ['#006EB8', '#16A34A', '#DC2626', '#EA580C', '#7C3AED', '#DB2777', '#0F766E', '#111827']
 
 const range = (min, max, { optional = false } = {}) => (v) => {
   if (optional && (v === '' || v === null || v === undefined)) return undefined
@@ -38,24 +46,127 @@ function SettingsForm({ initial }) {
     aulas_limite_semana: [range(1, 50, { optional: true })],
     dias_sumido: [range(3, 120)],
     whatsapp_dias_lembrete: [range(0, 15)],
+    cor_primaria: [(v) => (v && !isHexColor(v) ? 'Use o formato #RRGGBB' : undefined)],
   })
   useEffect(() => reset(formInitial), [formInitial, reset])
+
+  const { refresh } = useAuth()
+  const toast = useToast()
+  const logoRef = useRef(null)
+  const [uploading, setUploading] = useState(false)
+  const defaultText = useQuery({ queryKey: ['default-contract'], queryFn: defaultContractText, staleTime: Infinity })
 
   const mutation = useMutationToast(
     (v) => {
       const payload = { ...v }
       for (const k of NUMBER_FIELDS) payload[k] = v[k] === '' ? null : Number(v[k])
-      for (const k of Object.values(TEMPLATE_KEYS)) payload[k] = v[k]?.trim() || null
+      for (const k of [...Object.values(TEMPLATE_KEYS), 'contrato_titulo', 'contrato_texto', 'logo_url']) payload[k] = v[k]?.trim() || null
+      payload.cor_primaria = isHexColor(v.cor_primaria) ? v.cor_primaria.toUpperCase() : null
       return saveAcademySettings(academyId, payload)
     },
     {
       success: 'Configurações salvas',
-      invalidate: [['academy-settings', academyId], ['students', academyId], ['admin-dashboard', academyId]],
+      invalidate: [['academy-settings', academyId], ['students', academyId], ['admin-dashboard', academyId], ['onboarding', academyId]],
+      // logo novo aparece no menu e na troca de academia
+      onSuccess: () => refresh?.(),
     },
   )
 
+  const onLogo = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploading(true)
+    try {
+      setValue('logo_url', await uploadReceiptImage(academyId, file, 'logo'))
+    } catch (err) {
+      toast.error(errorMessage(err))
+    } finally {
+      setUploading(false)
+    }
+  }
+  const cor = isHexColor(values.cor_primaria) ? values.cor_primaria : DEFAULT_COLOR
+
   return (
     <form onSubmit={handleSubmit((v) => mutation.mutate(v))} noValidate>
+      <FormSection
+        title="Identidade visual"
+        description="Logo e cor da academia aplicados no sistema da equipe e na área do aluno (claro e escuro)."
+      >
+        <div className={styles.identity}>
+          <div className={styles.logoBox}>
+            {values.logo_url ? <img src={values.logo_url} alt="Logo da academia" /> : <ImageIcon size={28} />}
+          </div>
+          <div className={styles.identityActions}>
+            <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={onLogo} />
+            <Button type="button" variant="outline" size="sm" icon={Upload} loading={uploading} onClick={() => logoRef.current?.click()}>
+              {values.logo_url ? 'Trocar logo' : 'Enviar logo'}
+            </Button>
+            {values.logo_url && (
+              <Button type="button" variant="ghost" size="sm" icon={X} onClick={() => setValue('logo_url', '')}>
+                Remover
+              </Button>
+            )}
+            <span className="text-muted" style={{ fontSize: 12 }}>
+              PNG, JPG ou WEBP de até 2 MB, quadrado e de preferência com fundo transparente.
+            </span>
+          </div>
+        </div>
+        <div className={styles.colorRow}>
+          <label className={styles.colorPicker}>
+            <input type="color" value={cor} onChange={(e) => setValue('cor_primaria', e.target.value.toUpperCase())} aria-label="Cor principal" />
+          </label>
+          <Input label="Cor principal" placeholder={DEFAULT_COLOR} {...field('cor_primaria')} />
+          <div className={styles.swatches} role="group" aria-label="Sugestões de cor">
+            {SWATCHES.map((c) => (
+              <button key={c} type="button" style={{ background: c }} title={c} onClick={() => setValue('cor_primaria', c)} />
+            ))}
+          </div>
+          {values.cor_primaria && (
+            <Button type="button" variant="ghost" size="sm" icon={RotateCcw} onClick={() => setValue('cor_primaria', '')}>
+              Cor padrão
+            </Button>
+          )}
+        </div>
+        <div className={styles.preview} style={{ '--p': cor, '--on': readableOn(cor), '--soft': tint(cor, 0.88) }}>
+          <span className={styles.previewBtn}>Botão principal</span>
+          <span className={styles.previewChip}>Destaque</span>
+          <span className={styles.previewLink}>Link</span>
+        </div>
+      </FormSection>
+
+      <FormSection
+        title="Contrato"
+        description="Modelo usado ao gerar o contrato do aluno, que aceita eletronicamente pela área dele. O visual (cor, logo e assinatura) é o mesmo do recibo."
+      >
+        <FormGrid columns={2}>
+          <FullRow>
+            <Input label="Título" placeholder="Contrato de prestação de serviços" {...field('contrato_titulo')} />
+          </FullRow>
+          <FullRow>
+            <Textarea
+              label="Texto do contrato"
+              rows={14}
+              placeholder={defaultText.data ?? 'Carregando modelo padrão…'}
+              hint={`Deixe em branco para usar o modelo padrão. Variáveis: ${CONTRACT_VARIABLES.map((v) => `{${v}}`).join(' ')}`}
+              {...field('contrato_texto')}
+            />
+            {!values.contrato_texto && defaultText.data && (
+              <Button type="button" variant="ghost" size="sm" icon={Copy} onClick={() => setValue('contrato_texto', defaultText.data)}>
+                Começar a partir do modelo padrão
+              </Button>
+            )}
+          </FullRow>
+        </FormGrid>
+        <div style={{ marginTop: 16 }}>
+          <Switch
+            label="Enviar o contrato automaticamente ao cadastrar um aluno"
+            checked={Boolean(values.contrato_automatico)}
+            onChange={(v) => setValue('contrato_automatico', v)}
+          />
+        </div>
+      </FormSection>
+
       <FormSection
         title="Mensalidades em atraso"
         description="O aluno passa a ser considerado inadimplente quando tem mensalidade vencida há mais dias que a tolerância."

@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   CalendarDays,
   CreditCard,
   Dumbbell,
@@ -45,6 +46,7 @@ export const ADMIN_NAV = [
   {
     title: 'Administração',
     items: [
+      { to: '/admin/relatorios', label: 'Relatórios', icon: BarChart3, perms: ['relatorios.ver'] },
       { to: '/admin/perfil-acesso', label: 'Perfil de acesso', icon: ShieldCheck, perms: ['perfis.ver', 'equipe.ver'] },
       { to: '/admin/auditoria', label: 'Auditoria', icon: FileClock, perms: ['auditoria.ver'] },
       // "assinatura.ver" não existe na matriz de permissões: só o perfil Admin (e o Super Admin) enxerga

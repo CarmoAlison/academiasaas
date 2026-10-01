@@ -28,6 +28,7 @@ export const RESOURCES = [
   { key: 'equipe', label: 'Equipe' },
   { key: 'perfis', label: 'Perfis de acesso' },
   { key: 'auditoria', label: 'Auditoria' },
+  { key: 'relatorios', label: 'Relatórios' },
 ]
 
 export const ACTIONS = [

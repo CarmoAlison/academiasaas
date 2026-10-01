@@ -8,6 +8,7 @@ import { usePermissions } from '../../../hooks/usePermissions'
 import { adminDashboard } from '../../../services/dashboardService'
 import { STUDENT_STATUS } from '../../../utils/constants'
 import PlanUsage from '../assinatura/PlanUsage'
+import Onboarding from './Onboarding'
 import { firstName, formatCurrency, formatMonth } from '../../../utils/formatters'
 
 const compactCurrency = (v) =>
@@ -39,6 +40,8 @@ export default function Dashboard() {
           )
         }
       />
+
+      <Onboarding />
 
       <PlanUsage compact />
 

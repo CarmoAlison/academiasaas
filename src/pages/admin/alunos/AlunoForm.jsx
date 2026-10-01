@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { Dumbbell, Plus, ScanLine, Trash2, UserCheck } from 'lucide-react'
-import { useEffect } from 'react'
+import { Dumbbell, FileSignature, Plus, ScanLine, Trash2, UserCheck } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ResetPasswordButton from '../../../components/auth/ResetPasswordButton'
+import ContractModal from '../../../components/contract/ContractModal'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
 import QueryError from '../../../components/feedback/QueryError'
 import {
@@ -25,6 +26,7 @@ import { useMutationToast } from '../../../hooks/useMutationToast'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { planService, unitService } from '../../../services/catalogServices'
 import { listStudentCheckins, manualCheckin } from '../../../services/checkinService'
+import { cancelContract, issueContract, listStudentContracts } from '../../../services/contractService'
 import { listStudentPaymentsAdmin } from '../../../services/paymentService'
 import { createStudent, getStudent, removeStudent, updateStudent } from '../../../services/studentService'
 import { listWorkoutsByStudent } from '../../../services/workoutService'
@@ -79,7 +81,15 @@ function StudentSide({ student, academyId }) {
     success: (r) => (r?.repetido ? 'Já havia check-in nas últimas 3 horas' : 'Check-in registrado'),
     invalidate: [['checkins', academyId]],
   })
-  const ultimos30 = (checkins.data ?? []).filter((c) => Date.now() - new Date(c.created_at) <= 30 * 86400000).length
+  const [contractOpen, setContractOpen] = useState(null)
+  const contracts = useQuery({ queryKey: ['contracts', student.id], queryFn: () => listStudentContracts(student.id) })
+  const ultimo = contracts.data?.find((c) => c.status !== 'cancelado') ?? contracts.data?.[0]
+  const issue = useMutationToast(() => issueContract(student.id), {
+    success: 'Contrato enviado. O aluno aceita pela área do aluno.',
+    invalidate: [['contracts', student.id]],
+  })
+  const cancelC = useMutationToast(cancelContract, { success: 'Contrato cancelado', invalidate: [['contracts', student.id]] })
+  const ultimos30 =(checkins.data ?? []).filter((c) => Date.now() - new Date(c.created_at) <= 30 * 86400000).length
   const myWorkouts = (workouts.data ?? []).filter((w) => w.vigente)
   const myPayments = payments.data ?? []
 
@@ -139,6 +149,43 @@ function StudentSide({ student, academyId }) {
             )}
           </>
         )}
+      </Card>
+
+      <Card
+        title="Contrato"
+        actions={
+          can('alunos.editar') && (
+            <Button size="sm" variant="ghost" icon={FileSignature} loading={issue.isPending} onClick={() => issue.mutate()}>
+              {ultimo ? 'Reenviar' : 'Gerar'}
+            </Button>
+          )
+        }
+      >
+        {contracts.isPending ? (
+          <p className="text-muted">Carregando…</p>
+        ) : !ultimo ? (
+          <p className="text-muted">Nenhum contrato. Gere a partir do modelo em Configurações; o aluno aceita pela área dele.</p>
+        ) : (
+          <>
+            <p style={{ marginBottom: 8 }}>
+              <StatusBadge status={ultimo.status} />{' '}
+              <span className="text-muted">
+                {ultimo.status === 'aceito' ? `em ${formatDateTime(ultimo.aceito_em)}` : `enviado em ${formatDateTime(ultimo.created_at)}`}
+              </span>
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button size="sm" variant="outline" onClick={() => setContractOpen(ultimo.id)}>
+                Ver contrato
+              </Button>
+              {ultimo.status === 'pendente' && can('alunos.editar') && (
+                <Button size="sm" variant="ghost" loading={cancelC.isPending} onClick={() => cancelC.mutate(ultimo.id)}>
+                  Cancelar
+                </Button>
+              )}
+            </div>
+          </>
+        )}
+        <ContractModal contractId={contractOpen} onClose={() => setContractOpen(null)} />
       </Card>
 
       <Card title="Acesso">

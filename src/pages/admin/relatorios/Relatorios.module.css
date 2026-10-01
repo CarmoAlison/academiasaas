@@ -1,0 +1,48 @@
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
+  gap: var(--space-3);
+}
+
+.content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+  transition: opacity 150ms ease;
+}
+
+.loading {
+  opacity: 0.6;
+}
+
+/* Mapa de calor */
+.heatScroll {
+  overflow-x: auto;
+}
+
+.heat {
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: 11px;
+}
+
+.heat th {
+  padding: 2px 4px;
+  color: var(--color-text-muted);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+
+.heat tbody th {
+  text-align: left;
+}
+
+.heat td {
+  min-width: 26px;
+  height: 24px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-primary) calc(var(--a) * 100%), var(--color-muted-light));
+  font-weight: var(--fw-semibold);
+  text-align: center;
+}

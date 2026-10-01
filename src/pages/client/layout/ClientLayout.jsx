@@ -8,6 +8,7 @@ import ThemeToggle from '../../../components/shell/ThemeToggle'
 import UserMenu from '../../../components/shell/UserMenu'
 import { Button } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
+import { useBrand } from '../../../hooks/useBrand'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { setPreferredArea } from '../../../routes/accessOptions'
 import styles from './ClientLayout.module.css'
@@ -26,6 +27,7 @@ export default function ClientLayout() {
   const { isStaff } = usePermissions()
   const location = useLocation()
   const profile = membership?.profile
+  const brand = useBrand()
 
   return (
     <div className={styles.shell}>
@@ -33,7 +35,7 @@ export default function ClientLayout() {
         <div className={styles.inner}>
           <div className={styles.brand}>
             <span className={styles.logo}>
-              {academy?.logo_url ? <img src={academy.logo_url} alt="" /> : <Dumbbell size={18} />}
+              {brand.logo ? <img src={brand.logo} alt="" /> : <Dumbbell size={18} />}
             </span>
             <strong>{academy?.nome}</strong>
           </div>

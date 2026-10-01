@@ -1,0 +1,66 @@
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.title svg {
+  color: var(--color-primary);
+}
+
+.progress {
+  height: 8px;
+  margin-bottom: var(--space-4);
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-muted-light);
+}
+
+.progress > div {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-success);
+  transition: width 300ms ease;
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--fs-14);
+}
+
+.list li > svg {
+  flex-shrink: 0;
+  color: var(--color-border-strong);
+}
+
+.list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: var(--fw-medium);
+}
+
+.done {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.done > svg {
+  color: var(--color-success) !important;
+}
+
+.card {
+  margin-bottom: var(--space-5);
+}

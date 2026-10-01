@@ -3,6 +3,7 @@ import { Button, SkeletonCard, StatusBadge } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { firstName, formatCurrency, formatDate, formatTime, paymentStatus, toDate, toISODate } from '../../../utils/formatters'
 import { dayLabel, exercisesLabel, weekPosition } from '../../../utils/workoutDays'
+import { ContractBanner } from '../contrato/Contratos'
 import DelinquencyBanner from '../DelinquencyBanner'
 import styles from '../client.module.css'
 import { useMyCheckins, useMyPayments, useMyStudent, useMyWeekLogs, useMyWorkouts, useWeekSchedule, weekStart } from '../useStudent'
@@ -50,6 +51,7 @@ export default function Dashboard() {
       </div>
 
       <DelinquencyBanner />
+      <ContractBanner />
 
       <div className={styles.grid}>
         {workouts.isPending ? (

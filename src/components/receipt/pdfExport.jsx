@@ -42,6 +42,23 @@ export async function generateReceiptPdf(model) {
   return pdf(<ReceiptDocument model={model} logoDataUrl={logoDataUrl} signatureDataUrl={signatureDataUrl} />).toBlob()
 }
 
+/**
+ * Gera o PDF do contrato (mesmo visual do recibo).
+ * @param {ReturnType<typeof import('../contract/contractModel').buildContractModel>} model
+ * @returns {Promise<Blob>}
+ */
+export async function generateContractPdf(model) {
+  const [{ pdf }, { ContractDocument }, { registerSignatureFont }, logoDataUrl, signatureDataUrl] = await Promise.all([
+    import('@react-pdf/renderer'),
+    import('../contract/ContractPdf'),
+    import('./ReceiptPdf'),
+    imageToDataUrl(model.logo, 256),
+    imageToDataUrl(model.assinatura.imagem, 600),
+  ])
+  if (model.assinatura.cursiva) registerSignatureFont(`${window.location.origin}${SIGNATURE_FONT_PATH}`)
+  return pdf(<ContractDocument model={model} logoDataUrl={logoDataUrl} signatureDataUrl={signatureDataUrl} />).toBlob()
+}
+
 /** Baixa o blob como arquivo */
 export function downloadBlob(blob, fileName) {
   const url = URL.createObjectURL(blob)

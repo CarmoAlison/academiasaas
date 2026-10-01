@@ -388,3 +388,25 @@
   font-size: var(--fs-14);
   font-weight: var(--fw-medium);
 }
+
+/* Aviso informativo (contrato pendente) */
+.infoBanner {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  color: var(--color-text);
+}
+
+.infoBanner > svg {
+  color: var(--color-primary);
+}
+
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: var(--fw-semibold);
+  text-decoration: underline;
+  cursor: pointer;
+}
