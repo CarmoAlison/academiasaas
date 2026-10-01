@@ -43,8 +43,8 @@ export function AuthProvider({ children }) {
   })
 
   const signIn = useCallback(
-    async (cpf, password) => {
-      const newSession = await authService.signInWithCPF(cpf, password)
+    async (cpf, password, captchaToken) => {
+      const newSession = await authService.signInWithCPF(cpf, password, captchaToken)
       setSession(newSession)
       return queryClient.fetchQuery({ queryKey: ['me', newSession.user.id], queryFn: authService.getContext })
     },

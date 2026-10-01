@@ -1,13 +1,15 @@
 import { AlertCircle, IdCard } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import PasswordInput from '../../components/auth/PasswordInput'
+import Turnstile, { TURNSTILE_SITE_KEY } from '../../components/auth/Turnstile'
 import FullPageLoader from '../../components/feedback/FullPageLoader'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import { useAuth, useTenant } from '../../hooks/useAuth'
 import { useForm } from '../../hooks/useForm'
 import { resolveHome } from '../../routes/resolveHome'
+import { LoginError } from '../../services/authService'
 import { logAccess } from '../../services/logService'
 import { isSupabaseConfigured } from '../../services/supabaseClient'
 import { errorMessage } from '../../utils/errors'
@@ -22,6 +24,8 @@ export default function Login() {
   const location = useLocation()
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const captchaRef = useRef(null)
 
   const { field, handleSubmit } = useForm(
     { cpf: '', senha: '' },
@@ -30,9 +34,13 @@ export default function Login() {
 
   const onSubmit = handleSubmit(async ({ cpf, senha }) => {
     setError('')
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setError('Confirme a verificação de segurança abaixo.')
+      return
+    }
     setSubmitting(true)
     try {
-      const ctx = await signIn(cpf, senha)
+      const ctx = await signIn(cpf, senha, captchaToken)
       const from = location.state?.from?.pathname
 
       if (ctx.super_admin) {
@@ -55,7 +63,8 @@ export default function Login() {
       await logAccess(membership.academy_id, 'login')
       navigate(resolveHome(ctx, membership.academy_id), { replace: true })
     } catch (err) {
-      setError(errorMessage(err))
+      setError(err instanceof LoginError ? err.message : errorMessage(err))
+      captchaRef.current?.reset() // cada token de CAPTCHA vale para uma tentativa só
     } finally {
       setSubmitting(false)
     }
@@ -91,6 +100,7 @@ export default function Login() {
         <div className={styles.row}>
           <Link to="/recuperar-senha">Esqueci minha senha</Link>
         </div>
+        <Turnstile ref={captchaRef} onToken={setCaptchaToken} />
         <Button type="submit" size="lg" block loading={submitting}>
           Entrar
         </Button>

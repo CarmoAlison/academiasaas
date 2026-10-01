@@ -145,6 +145,9 @@ export const removeSuperAdmin = (id) => unwrap(supabase.from('super_admins').del
 export const resetSuperAdminPassword = (id) =>
   unwrap(supabase.rpc('reset_super_admin_password', { p_super_admin_id: id }))
 
+/** Apaga logs mais antigos que a retenção configurada. Retorna { erros, acessos, auditoria } */
+export const purgeOldLogs = () => unwrap(supabase.rpc('purge_old_logs'))
+
 // --- Configurações -----------------------------------------------------------
 
 export async function getSettings() {

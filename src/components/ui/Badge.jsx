@@ -1,10 +1,14 @@
 import styles from './Badge.module.css'
 
 /**
- * @param {{ tone?: 'success'|'warning'|'danger'|'info'|'neutral', children: any }} props
+ * @param {{ tone?: 'success'|'warning'|'danger'|'info'|'neutral', children: any, title?: string }} props
  */
-export default function Badge({ tone = 'neutral', children }) {
-  return <span className={`${styles.badge} ${styles[tone]}`}>{children}</span>
+export default function Badge({ tone = 'neutral', children, ...rest }) {
+  return (
+    <span className={`${styles.badge} ${styles[tone]}`} {...rest}>
+      {children}
+    </span>
+  )
 }
 
 const STATUS_TONES = {

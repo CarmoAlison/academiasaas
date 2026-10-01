@@ -53,6 +53,20 @@ Em **Authentication**:
 - **Providers → Email:** deve estar **habilitado**. "Confirm email" pode ficar como estiver, porque os usuários já são criados confirmados.
 - **Minimum password length:** mantenha em **6**. É o tamanho da senha padrão (6 primeiros dígitos do CPF).
 - **Secure password change:** deixe **desligado**. A troca de senha do sistema já confirma a senha atual antes de trocar.
+- **Rate Limits → Sign-ups and sign-ins:** mantenha o limite padrão (ou mais baixo). É o limite por IP do próprio Supabase; ele complementa o bloqueio por CPF que o sistema já faz (5 senhas erradas em 15 min → 15 min bloqueado).
+
+### Proteção extra: CAPTCHA no login (recomendado, gratuito)
+
+1. Em [dash.cloudflare.com](https://dash.cloudflare.com) → **Turnstile** → **Add widget**. Informe o domínio do site (ex.: `seu-app.vercel.app`) e o modo **Managed**.
+2. Copie a **Site Key** e a **Secret Key**.
+3. No Supabase: **Authentication → Attack Protection → Enable CAPTCHA protection**, provedor **Turnstile**, cole a **Secret Key**.
+4. Na Vercel: adicione a variável `VITE_TURNSTILE_SITE_KEY` com a **Site Key** e faça **Redeploy**.
+
+Faça os passos 3 e 4 juntos: com o CAPTCHA ligado no Supabase e sem a variável na Vercel, ninguém consegue entrar. Para desligar, remova a variável e desative a opção no Supabase.
+
+### Limpeza automática de logs
+
+A migração `006_seguranca.sql` agenda a limpeza diária com **pg_cron**. Se aparecer o aviso "pg_cron indisponível", ative a extensão em **Database → Extensions → pg_cron** e rode a migração de novo. Os prazos ficam em **Super Admin → Configurações → Retenção de logs**, onde também há o botão "Limpar logs antigos agora".
 
 ## 5. O que o `vercel.json` já faz
 

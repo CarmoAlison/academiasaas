@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useForm } from '../../hooks/useForm'
-import { changePassword } from '../../services/authService'
+import { changePassword, passwordProblem } from '../../services/authService'
 import { errorMessage } from '../../utils/errors'
 import { rules } from '../../utils/validators'
 import Button from '../ui/Button'
@@ -24,25 +24,20 @@ export function ChangePasswordForm({ onDone, onCancel, submitLabel = 'Salvar nov
 
   const { field, handleSubmit, reset, setErrors } = useForm(EMPTY, {
     atual: [rules.required('Informe a senha atual')],
-    nova: [
-      rules.required('Informe a nova senha'),
-      rules.minLength(6, 'A senha deve ter ao menos 6 caracteres'),
-      (v) => (v === cpf.slice(0, 6) ? 'A nova senha não pode ser a senha padrão' : undefined),
-      (v, all) => (v === all.atual ? 'A nova senha deve ser diferente da atual' : undefined),
-    ],
+    nova: [rules.required('Informe a nova senha'), (v, all) => passwordProblem(v, { cpf, current: all.atual })],
     confirmar: [(v, all) => (v !== all.nova ? 'As senhas não conferem' : undefined)],
   })
 
   const onSubmit = handleSubmit(async (values) => {
     setSaving(true)
     try {
-      await changePassword({ email: user.email, current: values.atual, next: values.nova })
+      await changePassword({ current: values.atual, next: values.nova })
       await refresh()
       toast.success('Senha alterada com sucesso')
       reset(EMPTY)
       onDone?.()
     } catch (err) {
-      if (/atual/i.test(err.message)) setErrors({ atual: err.message })
+      if (/atual|tentativas/i.test(err.message)) setErrors({ atual: err.message })
       else toast.error(errorMessage(err))
     } finally {
       setSaving(false)
@@ -52,7 +47,13 @@ export function ChangePasswordForm({ onDone, onCancel, submitLabel = 'Salvar nov
   return (
     <form onSubmit={onSubmit} noValidate style={{ display: 'grid', gap: 16 }}>
       <PasswordInput label="Senha atual" autoComplete="current-password" required {...field('atual')} />
-      <PasswordInput label="Nova senha" autoComplete="new-password" hint="Mínimo de 6 caracteres" required {...field('nova')} />
+      <PasswordInput
+        label="Nova senha"
+        autoComplete="new-password"
+        hint="Mínimo de 8 caracteres, com letras e números (não use seu CPF)"
+        required
+        {...field('nova')}
+      />
       <Input label="Confirmar nova senha" type="password" autoComplete="new-password" required {...field('confirmar')} />
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         {onCancel && (

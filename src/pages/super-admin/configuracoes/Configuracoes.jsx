@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
+import { Trash2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
 import QueryError from '../../../components/feedback/QueryError'
 import ProfileCard from '../../../components/profile/ProfileCard'
-import { Button, Card, FormActions, FormGrid, FormSection, FullRow, Input, PageHeader, Select, Switch } from '../../../components/ui'
+import { Button, Card, FormActions, FormGrid, FormSection, FullRow, Input, PageHeader, Select, Switch, useConfirm } from '../../../components/ui'
 import { useAuth } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
-import { getSettings, saveSettings } from '../../../services/saasService'
+import { getSettings, purgeOldLogs, saveSettings } from '../../../services/saasService'
 import { UFS } from '../../../utils/constants'
 import { rules } from '../../../utils/validators'
 
@@ -29,22 +30,57 @@ const DEFAULTS = {
   whatsapp_token: '',
   gateway_pagamento: '',
   gateway_chave_publica: '',
+  // retenção de logs (dias) — gravado em dados.retencao
+  retencao_erros: 90,
+  retencao_acessos: 180,
+  retencao_auditoria: 365,
+}
+
+/** dados (banco) → valores do formulário */
+const toForm = (initial = {}) => ({
+  ...DEFAULTS,
+  ...initial,
+  retencao_erros: initial.retencao?.erros ?? DEFAULTS.retencao_erros,
+  retencao_acessos: initial.retencao?.acessos ?? DEFAULTS.retencao_acessos,
+  retencao_auditoria: initial.retencao?.auditoria ?? DEFAULTS.retencao_auditoria,
+})
+
+/** valores do formulário → dados (banco) */
+function toDados(v) {
+  const { retencao_erros, retencao_acessos, retencao_auditoria, ...rest } = v
+  delete rest.retencao
+  return {
+    ...rest,
+    dias_vencimento: Number(v.dias_vencimento),
+    retencao: { erros: Number(retencao_erros), acessos: Number(retencao_acessos), auditoria: Number(retencao_auditoria) },
+  }
 }
 
 function SettingsForm({ initial }) {
-  const { field, values, setValue, handleSubmit, reset } = useForm(
-    { ...DEFAULTS, ...initial },
-    { nome: [rules.required()], cnpj: [rules.cnpj()], email_suporte: [rules.email()], dias_vencimento: [rules.min(1)] },
-  )
-  useEffect(() => reset({ ...DEFAULTS, ...initial }), [initial, reset])
+  const [confirm, confirmDialog] = useConfirm()
+  const { field, values, setValue, handleSubmit, reset } = useForm(toForm(initial), {
+    nome: [rules.required()],
+    cnpj: [rules.cnpj()],
+    email_suporte: [rules.email()],
+    dias_vencimento: [rules.min(1)],
+    retencao_erros: [rules.required(), rules.min(7, 'Mínimo de 7 dias')],
+    retencao_acessos: [rules.required(), rules.min(7, 'Mínimo de 7 dias')],
+    retencao_auditoria: [rules.required(), rules.min(30, 'Mínimo de 30 dias')],
+  })
+  useEffect(() => reset(toForm(initial)), [initial, reset])
 
-  const mutation = useMutationToast((v) => saveSettings({ ...v, dias_vencimento: Number(v.dias_vencimento) }), {
+  const mutation = useMutationToast((v) => saveSettings(toDados(v)), {
     success: 'Configurações salvas',
     invalidate: [['saas-settings']],
+  })
+  const purge = useMutationToast(purgeOldLogs, {
+    success: (r) => `Limpeza concluída: ${r.erros} erros, ${r.acessos} acessos e ${r.auditoria} eventos de auditoria apagados`,
+    invalidate: [['errors'], ['access-logs'], ['audit-logs']],
   })
 
   return (
     <form onSubmit={handleSubmit((v) => mutation.mutate(v))} noValidate>
+      {confirmDialog}
       <FormSection title="Dados do SaaS" description="Também aparecem como emissor no recibo das faturas enviadas às academias.">
         <FormGrid columns={2}>
           <Input label="Nome do produto / empresa" required {...field('nome')} />
@@ -73,6 +109,39 @@ function SettingsForm({ initial }) {
           <Input label="Usuário" {...field('smtp_usuario')} />
           <Input label="Remetente" placeholder="Academia SaaS <no-reply@...>" {...field('smtp_remetente')} />
         </FormGrid>
+      </FormSection>
+
+      <FormSection
+        title="Retenção de logs"
+        description="Logs mais antigos que estes prazos são apagados automaticamente todo dia (03:00 UTC, se o pg_cron estiver ativo no Supabase)."
+      >
+        <FormGrid columns={3}>
+          <Input label="Erros (dias)" type="number" min="7" {...field('retencao_erros')} />
+          <Input label="Acessos (dias)" type="number" min="7" {...field('retencao_acessos')} />
+          <Input label="Auditoria (dias)" type="number" min="30" {...field('retencao_auditoria')} />
+        </FormGrid>
+        <div style={{ marginTop: 12 }}>
+          <Button
+            variant="outline"
+            size="sm"
+            icon={Trash2}
+            loading={purge.isPending}
+            onClick={async () => {
+              if (
+                await confirm({
+                  title: 'Limpar logs antigos agora?',
+                  message: 'Usa os prazos já salvos. Salve antes se acabou de alterá-los. Os registros apagados não podem ser recuperados.',
+                  danger: true,
+                  confirmLabel: 'Limpar agora',
+                })
+              ) {
+                purge.mutate()
+              }
+            }}
+          >
+            Limpar logs antigos agora
+          </Button>
+        </div>
       </FormSection>
 
       <FormSection title="Integrações" description="Preparação para a fase 2 (pagamentos online e WhatsApp).">

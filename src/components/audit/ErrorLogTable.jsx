@@ -4,6 +4,7 @@ import { useDebounce } from '../../hooks/useDebounce'
 import { listErrors } from '../../services/auditService'
 import { formatDateTime } from '../../utils/formatters'
 import QueryError from '../feedback/QueryError'
+import Badge from '../ui/Badge'
 import DataTable from '../ui/DataTable'
 import Drawer from '../ui/Drawer'
 import Input from '../ui/Input'
@@ -36,7 +37,20 @@ export default function ErrorLogTable({ academyId }) {
 
   const columns = [
     { key: 'created_at', header: 'Data', render: (r) => formatDateTime(r.created_at), width: 150 },
-    { key: 'mensagem', header: 'Mensagem', render: (r) => <span className={styles.truncate}>{r.mensagem}</span> },
+    {
+      key: 'mensagem',
+      header: 'Mensagem',
+      render: (r) => (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%' }}>
+          <span className={styles.truncate}>{r.mensagem}</span>
+          {r.ocorrencias > 1 && (
+            <Badge tone="warning" title={`Última vez: ${formatDateTime(r.ultima_em)}`}>
+              {r.ocorrencias}×
+            </Badge>
+          )}
+        </span>
+      ),
+    },
     { key: 'rota', header: 'Rota', render: (r) => <span className={styles.mono}>{r.rota ?? '—'}</span> },
     { key: 'user_nome', header: 'Usuário', render: (r) => r.user_nome ?? <span className="text-muted">Anônimo</span> },
     ...(global ? [{ key: 'academies.nome', header: 'Academia', render: (r) => r.academies?.nome ?? '—' }] : []),
@@ -78,6 +92,14 @@ export default function ErrorLogTable({ academyId }) {
                 <dt>Data</dt>
                 <dd>{formatDateTime(selected.created_at)}</dd>
               </div>
+              {selected.ocorrencias > 1 && (
+                <div>
+                  <dt>Ocorrências</dt>
+                  <dd>
+                    {selected.ocorrencias}× · última {formatDateTime(selected.ultima_em)}
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt>Usuário</dt>
                 <dd>{selected.user_nome ?? 'Anônimo'}</dd>
