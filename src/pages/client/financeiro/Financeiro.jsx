@@ -5,6 +5,7 @@ import ReceiptModal from '../../../components/receipt/ReceiptModal'
 import { Button, EmptyState, PageHeader, SkeletonCard, StatusBadge } from '../../../components/ui'
 import { PAYMENT_METHODS } from '../../../utils/constants'
 import { formatCurrency, formatDate, paymentStatus } from '../../../utils/formatters'
+import DelinquencyBanner from '../DelinquencyBanner'
 import styles from '../client.module.css'
 import { useMyPayments } from '../useStudent'
 
@@ -21,6 +22,7 @@ export default function Financeiro() {
   return (
     <>
       <PageHeader title="Financeiro" subtitle="Suas mensalidades e pagamentos" />
+      <DelinquencyBanner context="financeiro" />
 
       {payments.isPending ? (
         <SkeletonCard />

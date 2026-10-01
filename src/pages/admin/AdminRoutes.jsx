@@ -28,6 +28,7 @@ const Erros = lazy(() => import('./auditoria/Erros'))
 const Acessos = lazy(() => import('./auditoria/Acessos'))
 const Perfil = lazy(() => import('./perfil/Perfil'))
 const Assinatura = lazy(() => import('./assinatura/Assinatura'))
+const ConfiguracoesAcademia = lazy(() => import('./configuracoes/ConfiguracoesAcademia'))
 
 const guard = (perm, element) => <PermissionGuard perm={perm}>{element}</PermissionGuard>
 
@@ -72,6 +73,7 @@ export const adminRoutes = (
     </Route>
 
     <Route path="assinatura" element={guard(ADMIN_ONLY, <Assinatura />)} />
+    <Route path="configuracoes" element={guard(ADMIN_ONLY, <ConfiguracoesAcademia />)} />
 
     <Route path="perfil" element={<Perfil />} />
   </Route>

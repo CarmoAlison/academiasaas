@@ -3,7 +3,7 @@ import { Download, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import QueryError from '../../../components/feedback/QueryError'
-import { Avatar, Button, DataTable, PageHeader, Select, StatusBadge, useToast } from '../../../components/ui'
+import { Avatar, Badge, Button, DataTable, PageHeader, Select, StatusBadge, useToast } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { useServerTable } from '../../../hooks/useServerTable'
@@ -12,7 +12,7 @@ import { exportStudents, listStudentsPage } from '../../../services/studentServi
 import { STUDENT_STATUS } from '../../../utils/constants'
 import { exportCSV } from '../../../utils/csv'
 import { errorMessage } from '../../../utils/errors'
-import { formatCPF, formatDate, formatPhone } from '../../../utils/formatters'
+import { formatCPF, formatDate, formatPhone, toISODate } from '../../../utils/formatters'
 
 export default function AlunosList() {
   const { academyId } = useTenant()
@@ -20,6 +20,7 @@ export default function AlunosList() {
   const navigate = useNavigate()
   const toast = useToast()
   const [exporting, setExporting] = useState(false)
+  const today = toISODate()
 
   // paginação, busca, ordenação e filtros no servidor
   const { query, tableProps, filters, setFilter, search } = useServerTable({
@@ -43,7 +44,9 @@ export default function AlunosList() {
         { header: 'Plano', value: (s) => s.plano_nome },
         { header: 'Unidade', value: (s) => s.unidade_nome },
         { header: 'Matrícula', value: (s) => formatDate(s.data_matricula) },
+        { header: 'Plano válido até', value: (s) => (s.plano_valido_ate ? formatDate(s.plano_valido_ate) : '') },
         { header: 'Status', value: (s) => s.status },
+        { header: 'Inadimplente', value: (s) => (s.inadimplente ? 'sim' : 'não') },
       ], rows)
     } catch (err) {
       toast.error(errorMessage(err))
@@ -83,7 +86,11 @@ export default function AlunosList() {
               placeholder="Todos os status"
               value={filters.status}
               onChange={(e) => setFilter('status', e.target.value)}
-              options={STUDENT_STATUS}
+              options={[
+                ...STUDENT_STATUS,
+                { value: 'inadimplente', label: 'Inadimplentes' },
+                { value: 'plano_vencido', label: 'Plano vencido' },
+              ]}
             />
             <Select
               aria-label="Plano"
@@ -113,6 +120,7 @@ export default function AlunosList() {
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
                 <Avatar name={s.nome} src={s.avatar_url} size={32} />
                 <strong>{s.nome}</strong>
+                {s.tambem_equipe && <Badge tone="info" title="Também faz parte da equipe">Equipe</Badge>}
               </span>
             ),
           },
@@ -120,7 +128,30 @@ export default function AlunosList() {
           { key: 'telefone', header: 'Telefone', render: (s) => (s.telefone ? formatPhone(s.telefone) : '—') },
           { key: 'plano_nome', header: 'Plano', render: (s) => s.plano_nome ?? '—' },
           { key: 'data_matricula', header: 'Matrícula', render: (s) => formatDate(s.data_matricula) },
-          { key: 'status', header: 'Status', render: (s) => <StatusBadge status={s.status} /> },
+          {
+            key: 'plano_valido_ate',
+            header: 'Plano até',
+            render: (s) =>
+              !s.plano_valido_ate ? (
+                <span className="text-muted">—</span>
+              ) : s.plano_valido_ate < today ? (
+                <Badge tone="danger" title="Plano vencido — gere a cobrança de renovação no Financeiro">
+                  Venceu {formatDate(s.plano_valido_ate)}
+                </Badge>
+              ) : (
+                formatDate(s.plano_valido_ate)
+              ),
+          },
+          {
+            key: 'status',
+            header: 'Status',
+            render: (s) => (
+              <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
+                <StatusBadge status={s.status} />
+                {s.inadimplente && <Badge tone="danger">Inadimplente</Badge>}
+              </span>
+            ),
+          },
         ]}
       />
     </>

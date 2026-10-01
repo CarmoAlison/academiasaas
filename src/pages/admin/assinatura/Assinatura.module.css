@@ -11,6 +11,75 @@
   color: var(--color-danger-text);
 }
 
+.usage {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.usageTop {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--fs-14);
+}
+
+.usageTop span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.usageBar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-muted-light);
+}
+
+.usageBar > div {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+}
+
+.usage small {
+  font-size: var(--fs-12);
+}
+
+.usage_warning {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-light);
+  color: var(--color-warning-text);
+}
+
+.usage_warning .usageBar > div {
+  background: var(--color-warning);
+}
+
+.usage_danger {
+  border-color: var(--color-danger);
+  background: var(--color-danger-light);
+  color: var(--color-danger-text);
+}
+
+.usage_danger .usageBar > div {
+  background: var(--color-danger);
+}
+
+.usageNote {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--fs-14);
+}
+
 .alert svg {
   flex-shrink: 0;
   margin-top: 2px;

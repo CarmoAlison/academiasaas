@@ -133,11 +133,15 @@ function WeekPlan({ workout, logs }) {
         <div className={styles.progress} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
           <div style={{ width: `${pct}%` }} />
         </div>
-        {(workout.objetivo || workout.data_fim) && (
+        {(workout.objetivo || workout.data_fim || workout.professor?.nome) && (
           <span className={styles.muted}>
-            {workout.objetivo ?? ''}
-            {workout.objetivo && workout.data_fim ? ' · ' : ''}
-            {workout.data_fim ? `ficha válida até ${formatDate(workout.data_fim)}` : ''}
+            {[
+              workout.objetivo,
+              workout.professor?.nome && `Prof. ${workout.professor.nome}`,
+              workout.data_fim && `ficha válida até ${formatDate(workout.data_fim)}`,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </span>
         )}
       </section>

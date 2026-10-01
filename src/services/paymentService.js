@@ -1,4 +1,3 @@
-import { toISODate } from '../utils/formatters'
 import { applySearch, applySort, pageRange } from './paging'
 import { nowISO, supabase, unwrap, unwrapWithCount } from './supabaseClient'
 
@@ -88,50 +87,15 @@ export const cancelPayment = (id) => unwrap(supabase.from('payments').update({ s
 export const removePayment = (id) => unwrap(supabase.from('payments').update({ deleted_at: nowISO() }).eq('id', id))
 
 /**
- * Gera cobranças do mês para alunos ativos com plano (ignora quem já tem cobrança no mês).
+ * Gera as cobranças de renovação (no banco, de uma vez): alunos ativos com plano cuja
+ * validade termina até `ate` e que ainda não têm cobrança pendente.
+ * Vencimento = dia seguinte ao fim da validade. Valor = valor do plano (mensal, trimestral…).
  * @param {string} academyId
- * @param {string} vencimento YYYY-MM-DD
+ * @param {string} ate YYYY-MM-DD (normalmente o último dia do mês escolhido)
  * @returns {Promise<number>} quantidade criada
  */
-export async function generateMonthlyCharges(academyId, vencimento) {
-  const [y, m] = vencimento.split('-').map(Number)
-  const inicio = toISODate(new Date(y, m - 1, 1))
-  const fim = toISODate(new Date(y, m, 0))
-
-  const students = await unwrap(
-    supabase
-      .from('students')
-      .select('id, plan:plans(id, valor, ativo)')
-      .eq('academy_id', academyId)
-      .eq('status', 'ativo')
-      .is('deleted_at', null)
-      .not('plan_id', 'is', null),
-  )
-  const existing = await unwrap(
-    supabase
-      .from('payments')
-      .select('student_id')
-      .eq('academy_id', academyId)
-      .is('deleted_at', null)
-      .neq('status', 'cancelado')
-      .gte('vencimento', inicio)
-      .lte('vencimento', fim),
-  )
-  const already = new Set(existing.map((p) => p.student_id))
-  const rows = students
-    .filter((s) => s.plan && !already.has(s.id))
-    .map((s) => ({
-      academy_id: academyId,
-      student_id: s.id,
-      plan_id: s.plan.id,
-      descricao: 'Mensalidade',
-      valor: s.plan.valor,
-      vencimento,
-      status: 'pendente',
-    }))
-  if (rows.length) await unwrap(supabase.from('payments').insert(rows))
-  return rows.length
-}
+export const generatePlanCharges = (academyId, ate) =>
+  unwrap(supabase.rpc('generate_plan_charges', { p_academy: academyId, p_ate: ate }))
 
 /** Área do aluno */
 export const listStudentPayments = (studentId) =>

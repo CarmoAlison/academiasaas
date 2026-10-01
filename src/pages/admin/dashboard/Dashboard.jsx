@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, CalendarDays, DollarSign, UserPlus, Users } from 'lucide-react'
+import { AlertTriangle, CalendarClock, CalendarDays, DollarSign, UserPlus, Users } from 'lucide-react'
 import { BarList, SimpleAreaChart, SimpleBarChart } from '../../../components/charts/Charts'
 import QueryError from '../../../components/feedback/QueryError'
 import { Button, Card, Grid, PageHeader, StatCard, StatGrid } from '../../../components/ui'
@@ -7,6 +7,7 @@ import { useTenant } from '../../../hooks/useAuth'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { adminDashboard } from '../../../services/dashboardService'
 import { STUDENT_STATUS } from '../../../utils/constants'
+import PlanUsage from '../assinatura/PlanUsage'
 import { firstName, formatCurrency, formatMonth } from '../../../utils/formatters'
 
 const compactCurrency = (v) =>
@@ -39,9 +40,26 @@ export default function Dashboard() {
         }
       />
 
+      <PlanUsage compact />
+
       <StatGrid>
         <StatCard label="Alunos ativos" value={d?.alunos_ativos} icon={Users} loading={query.isPending} />
-        <StatCard label="Inadimplentes" value={d?.inadimplentes} icon={AlertTriangle} tone="danger" loading={query.isPending} hint="Com mensalidade vencida" />
+        <StatCard
+          label="Inadimplentes"
+          value={d?.inadimplentes}
+          icon={AlertTriangle}
+          tone="danger"
+          loading={query.isPending}
+          hint={d ? `Atraso de mais de ${d.tolerancia} dia(s)` : undefined}
+        />
+        <StatCard
+          label="Planos vencendo"
+          value={d?.planos_vencendo}
+          icon={CalendarClock}
+          tone="warning"
+          loading={query.isPending}
+          hint="Nos próximos 7 dias"
+        />
         <StatCard label="Aulas hoje" value={d?.aulas_hoje} icon={CalendarDays} tone="warning" loading={query.isPending} />
         <StatCard label="Novos no mês" value={d?.novos_mes} icon={UserPlus} tone="success" loading={query.isPending} />
         <StatCard label="Receita do mês" value={formatCurrency(d?.receita_mes)} icon={DollarSign} loading={query.isPending} hint="Pagamentos recebidos" />

@@ -75,6 +75,26 @@ function StudentSide({ student, academyId }) {
 
   return (
     <div className={styles.side}>
+      <Card title="Plano">
+        {student.plan ? (
+          <p>
+            <strong>{student.plan.nome}</strong>
+            <br />
+            {student.plano_valido_ate ? (
+              student.plano_valido_ate < toISODate() ? (
+                <span style={{ color: 'var(--color-danger)' }}>Venceu em {formatDate(student.plano_valido_ate)} — gere a renovação no Financeiro</span>
+              ) : (
+                <span className="text-muted">Válido até {formatDate(student.plano_valido_ate)}</span>
+              )
+            ) : (
+              <span className="text-muted">Validade definida no primeiro pagamento</span>
+            )}
+          </p>
+        ) : (
+          <p className="text-muted">Sem plano.</p>
+        )}
+      </Card>
+
       <Card title="Acesso">
         <p className="text-muted" style={{ marginBottom: 12 }}>
           Login com CPF <strong>{formatCPF(student.profile.cpf)}</strong>.

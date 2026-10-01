@@ -9,6 +9,7 @@ import { getAcademy, listSaasInvoices } from '../../../services/saasService'
 import { PAYMENT_METHODS } from '../../../utils/constants'
 import { formatCurrency, formatDate, paymentStatus } from '../../../utils/formatters'
 import styles from './Assinatura.module.css'
+import PlanUsage from './PlanUsage'
 
 const competenciaLabel = (d) => {
   const [y, m] = String(d).split('-')
@@ -41,6 +42,7 @@ export default function Assinatura() {
   return (
     <>
       <PageHeader title="Assinatura do sistema" subtitle="Faturas do seu plano e recibos de pagamento" />
+      <PlanUsage />
 
       {atrasadas.length > 0 && (
         <div className={styles.alert} role="alert">

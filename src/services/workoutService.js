@@ -1,5 +1,6 @@
 import { sortDays } from '../utils/workoutDays'
 import { applySearch, applySort, pageRange } from './paging'
+import { staffNames } from './roleService'
 import { nowISO, supabase, unwrap, unwrapWithCount } from './supabaseClient'
 
 const SELECT = `
@@ -126,7 +127,9 @@ export async function listStudentWorkouts(studentId) {
       .is('deleted_at', null)
       .order('created_at', { ascending: false }),
   )
-  return workouts.map(normalize)
+  // o aluno não lê cadastros da equipe; o nome do professor vem de staff_names()
+  const names = await staffNames(workouts.map((w) => w.professor_id))
+  return workouts.map((w) => normalize({ ...w, professor: w.professor_id ? { id: w.professor_id, nome: names[w.professor_id] ?? null } : null }))
 }
 
 /** Conclusões do aluno a partir de uma data (ex.: início da semana) */

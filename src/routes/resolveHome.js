@@ -1,4 +1,5 @@
 import { ROLE_SLUGS } from '../utils/constants'
+import { getPreferredArea } from './accessOptions'
 
 /**
  * Define a rota inicial do usuário conforme seus vínculos.
@@ -15,7 +16,10 @@ export function resolveHome(context, academyId) {
   if (super_admin && academyId) return '/admin'
 
   if (membership) {
-    if (membership.roles.some((r) => r.slug !== ROLE_SLUGS.ALUNO)) return '/admin'
+    const isStaff = membership.roles.some((r) => r.slug !== ROLE_SLUGS.ALUNO)
+    // equipe que também treina: respeita o acesso escolhido no login
+    if (isStaff && membership.student_id && getPreferredArea() === 'client') return '/client/dashboard'
+    if (isStaff) return '/admin'
     if (membership.student_id) return '/client/dashboard'
   }
   if (super_admin) return '/super-admin/dashboard'

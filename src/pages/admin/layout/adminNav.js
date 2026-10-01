@@ -7,6 +7,7 @@ import {
   MapPin,
   Package,
   Receipt,
+  Settings,
   ShieldCheck,
   Users,
 } from 'lucide-react'
@@ -44,6 +45,7 @@ export const ADMIN_NAV = [
       { to: '/admin/auditoria', label: 'Auditoria', icon: FileClock, perms: ['auditoria.ver'] },
       // "assinatura.ver" não existe na matriz de permissões: só o perfil Admin (e o Super Admin) enxerga
       { to: '/admin/assinatura', label: 'Assinatura do sistema', icon: Receipt, perms: [ADMIN_ONLY] },
+      { to: '/admin/configuracoes', label: 'Configurações', icon: Settings, perms: [ADMIN_ONLY] },
     ],
   },
 ]

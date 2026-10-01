@@ -4,7 +4,7 @@ import { nowISO, supabase, unwrap, unwrapWithCount } from './supabaseClient'
 
 const SELECT = `
   id, academy_id, profile_id, unit_id, plan_id, data_matricula, status, data_nascimento, responsavel,
-  endereco, cidade, estado, cep, observacoes, created_at,
+  endereco, cidade, estado, cep, observacoes, created_at, plano_valido_ate,
   profile:profiles(id, user_id, nome, cpf, telefone, email_contato, avatar_url, status, must_change_password),
   plan:plans(id, nome, valor),
   unit:units(id, nome)
@@ -32,13 +32,16 @@ const STUDENT_SORT = {
   telefone: 'telefone',
   plano_nome: 'plano_nome',
   data_matricula: 'data_matricula',
+  plano_valido_ate: 'plano_valido_ate',
   status: 'status',
 }
 
 /** Monta a consulta de alunos (view v_students) com busca e filtros */
 function studentsQuery(academyId, { search = '', filters = {} } = {}, options) {
   let query = supabase.from('v_students').select('*', options).eq('academy_id', academyId)
-  if (filters.status) query = query.eq('status', filters.status)
+  if (filters.status === 'inadimplente') query = query.eq('inadimplente', true)
+  else if (filters.status === 'plano_vencido') query = query.eq('status', 'ativo').lt('plano_valido_ate', new Date().toISOString().slice(0, 10))
+  else if (filters.status) query = query.eq('status', filters.status)
   if (filters.plan_id) query = query.eq('plan_id', filters.plan_id)
   if (filters.unit_id) query = query.eq('unit_id', filters.unit_id)
   return applySearch(query, search, { text: ['nome', 'email_contato'], digits: ['cpf', 'telefone'] })
@@ -112,11 +115,11 @@ export async function updateStudent(student, values) {
 }
 
 /** Soft delete do aluno e do seu profile */
-export async function removeStudent(student) {
-  const deleted_at = nowISO()
-  await unwrap(supabase.from('students').update({ deleted_at, status: 'inativo' }).eq('id', student.id))
-  await unwrap(supabase.from('profiles').update({ deleted_at, status: 'inativo' }).eq('id', student.profile_id))
-}
+export const removeStudent = (student) => unwrap(supabase.rpc('remove_student', { p_student: student.id }))
+// Obs.: se a pessoa também é da equipe, o acesso de equipe é mantido (regra no banco)
+
+/** Uso do plano SaaS: { ativos, limite, plano } */
+export const academyUsage = (academyId) => unwrap(supabase.rpc('academy_usage', { p_academy: academyId }))
 
 /** Aluno logado: dados do próprio cadastro */
 export const getMyStudent = (studentId) => getStudent(studentId)

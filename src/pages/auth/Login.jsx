@@ -8,6 +8,7 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import { useAuth, useTenant } from '../../hooks/useAuth'
 import { useForm } from '../../hooks/useForm'
+import { accessOptions, optionPath, setPreferredArea } from '../../routes/accessOptions'
 import { resolveHome } from '../../routes/resolveHome'
 import { LoginError } from '../../services/authService'
 import { logAccess } from '../../services/logService'
@@ -43,25 +44,23 @@ export default function Login() {
       const ctx = await signIn(cpf, senha, captchaToken)
       const from = location.state?.from?.pathname
 
-      if (ctx.super_admin) {
-        setAcademy(null)
-        await logAccess(null, 'login')
-        navigate(from?.startsWith('/super-admin') ? from : '/super-admin/dashboard', { replace: true })
-        return
-      }
-      if (ctx.memberships.length === 0) {
+      const options = accessOptions(ctx)
+      if (options.length === 0) {
         await signOut()
         setError('Seu usuário não possui acesso ativo a nenhuma academia.')
         return
       }
-      if (ctx.memberships.length > 1) {
+      // mais de um acesso (várias academias, ou equipe que também é aluno): o usuário escolhe
+      if (options.length > 1) {
         navigate('/selecionar-academia', { replace: true })
         return
       }
-      const [membership] = ctx.memberships
-      setAcademy(membership.academy_id)
-      await logAccess(membership.academy_id, 'login')
-      navigate(resolveHome(ctx, membership.academy_id), { replace: true })
+      const [option] = options
+      setAcademy(option.academyId)
+      setPreferredArea(option.area === 'super' ? null : option.area)
+      await logAccess(option.academyId, 'login')
+      const fallback = option.area === 'super' ? optionPath(option) : resolveHome(ctx, option.academyId)
+      navigate(from?.startsWith(optionPath(option).split('/').slice(0, 2).join('/')) ? from : fallback, { replace: true })
     } catch (err) {
       setError(err instanceof LoginError ? err.message : errorMessage(err))
       captchaRef.current?.reset() // cada token de CAPTCHA vale para uma tentativa só

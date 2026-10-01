@@ -3,6 +3,7 @@ import { Button, SkeletonCard, StatusBadge } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { firstName, formatCurrency, formatDate, formatTime, paymentStatus, toDate, toISODate } from '../../../utils/formatters'
 import { dayLabel, exercisesLabel, weekPosition } from '../../../utils/workoutDays'
+import DelinquencyBanner from '../DelinquencyBanner'
 import styles from '../client.module.css'
 import { useMyPayments, useMyStudent, useMyWeekLogs, useMyWorkouts, useWeekSchedule, weekStart } from '../useStudent'
 
@@ -43,6 +44,8 @@ export default function Dashboard() {
           {doneToday ? 'Treino de hoje concluído. Mandou bem! 💪' : todayDay ? 'Bora treinar hoje?' : 'Aproveite o descanso de hoje.'}
         </p>
       </div>
+
+      <DelinquencyBanner />
 
       <div className={styles.grid}>
         {workouts.isPending ? (
@@ -99,6 +102,12 @@ export default function Dashboard() {
               <span className={styles.big}>{s?.plan?.nome ?? 'Sem plano'}</span>
               <span className={styles.muted}>
                 {s?.plan ? `${formatCurrency(s.plan.valor)} · ` : ''}Aluno desde {formatDate(s?.data_matricula)}
+                {s?.plano_valido_ate && (
+                  <>
+                    <br />
+                    {s.plano_valido_ate < today ? `Plano venceu em ${formatDate(s.plano_valido_ate)}` : `Válido até ${formatDate(s.plano_valido_ate)}`}
+                  </>
+                )}
               </span>
             </>
           )}

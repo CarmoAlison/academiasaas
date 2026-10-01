@@ -9,6 +9,7 @@ import UserMenu from '../../../components/shell/UserMenu'
 import { Button } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { usePermissions } from '../../../hooks/usePermissions'
+import { setPreferredArea } from '../../../routes/accessOptions'
 import styles from './ClientLayout.module.css'
 
 const NAV = [
@@ -45,7 +46,7 @@ export default function ClientLayout() {
           </nav>
           <div className={styles.right}>
             {isStaff && (
-              <Button variant="ghost" size="sm" to="/admin" className={styles.staffBtn}>
+              <Button variant="ghost" size="sm" to="/admin" className={styles.staffBtn} onClick={() => setPreferredArea('admin')}>
                 Gestão
               </Button>
             )}

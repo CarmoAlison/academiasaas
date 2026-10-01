@@ -6,6 +6,7 @@ import { Badge, Button, EmptyState, PageHeader, SkeletonCard } from '../../../co
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { classService } from '../../../services/classService'
 import { addDays, formatTime, toISODate } from '../../../utils/formatters'
+import DelinquencyBanner from '../DelinquencyBanner'
 import styles from '../client.module.css'
 import { useWeekSchedule, weekStart } from '../useStudent'
 
@@ -34,6 +35,7 @@ export default function Aulas() {
   return (
     <>
       <PageHeader title="Aulas" subtitle="Reserve sua vaga nas aulas coletivas" />
+      <DelinquencyBanner context="aulas" />
 
       <div className={styles.weekNav}>
         <Button variant="outline" size="sm" icon={ChevronLeft} onClick={() => setStart(addDays(start, -7))} disabled={isCurrentWeek} aria-label="Semana anterior" />
@@ -76,6 +78,7 @@ export default function Aulas() {
                             <Users size={13} /> {c.ocupadas}/{c.capacidade}
                           </span>
                           {c.unit?.nome && <span>{c.unit.nome}</span>}
+                          {c.professor_nome && <span>Prof. {c.professor_nome}</span>}
                         </div>
                       </div>
                       {c.booking ? (

@@ -6,6 +6,7 @@ import UserMenu from '../../../components/shell/UserMenu'
 import { Badge, Button } from '../../../components/ui'
 import { useAuth, useTenant } from '../../../hooks/useAuth'
 import { usePermissions } from '../../../hooks/usePermissions'
+import { setPreferredArea } from '../../../routes/accessOptions'
 import styles from './AdminLayout.module.css'
 import { visibleNav } from './adminNav'
 
@@ -40,7 +41,7 @@ export default function AdminLayout() {
       topbarRight={
         <>
           {hasStudentArea && (
-            <Button variant="ghost" size="sm" icon={Eye} to="/client/dashboard">
+            <Button variant="ghost" size="sm" icon={Eye} to="/client/dashboard" onClick={() => setPreferredArea('client')}>
               Área do aluno
             </Button>
           )}

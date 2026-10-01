@@ -42,7 +42,7 @@ import {
   cancelPayment,
   createPayment,
   exportPayments,
-  generateMonthlyCharges,
+  generatePlanCharges,
   listPaymentsPage,
   markPaid,
   paymentsSummary,
@@ -179,9 +179,13 @@ export default function Financeiro() {
   const reopenMutation = useMutationToast(reopenPayment, { success: 'Pagamento reaberto', invalidate })
   const cancelMutation = useMutationToast(cancelPayment, { success: 'Cobrança cancelada', invalidate })
   const removeMutation = useMutationToast(removePayment, { success: 'Cobrança excluída', invalidate })
-  const generateMutation = useMutationToast(() => generateMonthlyCharges(academyId, `${mes}-10`), {
-    success: (n) => (n ? `${n} cobrança(s) gerada(s) com vencimento em 10/${mes.slice(5)}` : 'Todos os alunos ativos já possuem cobrança neste mês'),
-    invalidate,
+  // renovação: alunos cujo plano vence até o fim do mês escolhido e ainda sem cobrança pendente
+  const generateMutation = useMutationToast(() => generatePlanCharges(academyId, range.ate), {
+    success: (n) =>
+      n
+        ? `${n} cobrança(s) de renovação gerada(s) (vencimento no dia seguinte ao fim de cada plano)`
+        : 'Nenhuma renovação pendente: todos os planos que vencem até o fim do mês já têm cobrança',
+    invalidate: [...invalidate, ['students', academyId]],
   })
 
   const onExport = async () => {
@@ -228,8 +232,23 @@ export default function Financeiro() {
             )}
             {can('financeiro.criar') && (
               <>
-                <Button variant="secondary" icon={FilePlus2} loading={generateMutation.isPending} onClick={() => generateMutation.mutate()}>
-                  Gerar mensalidades
+                <Button
+                  variant="secondary"
+                  icon={FilePlus2}
+                  loading={generateMutation.isPending}
+                  onClick={async () => {
+                    if (
+                      await confirm({
+                        title: 'Gerar cobranças de renovação?',
+                        message: `Cria uma cobrança para cada aluno ativo cujo plano vence até o fim de ${mes.slice(5)}/${mes.slice(0, 4)} e que ainda não tem cobrança em aberto. O valor é o do plano (mensal, trimestral…).`,
+                        confirmLabel: 'Gerar cobranças',
+                      })
+                    ) {
+                      generateMutation.mutate()
+                    }
+                  }}
+                >
+                  Gerar renovações
                 </Button>
                 <Button icon={Plus} onClick={() => setNewOpen(true)}>
                   Nova cobrança
@@ -282,7 +301,7 @@ export default function Financeiro() {
           </>
         }
         emptyTitle="Nenhuma cobrança neste mês"
-        emptyDescription='Use "Gerar mensalidades" para criar as cobranças dos alunos ativos com plano.'
+        emptyDescription='Use "Gerar renovações" para criar as cobranças dos planos que vencem neste mês.'
         columns={[
           { key: 'aluno_nome', header: 'Aluno', render: (p) => <strong>{p.aluno_nome}</strong> },
           { key: 'descricao', header: 'Descrição', render: (p) => `${p.descricao ?? 'Cobrança'}${p.plano_nome ? ` · ${p.plano_nome}` : ''}` },

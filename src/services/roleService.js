@@ -131,5 +131,13 @@ export async function updateStaff(member, values, academyId) {
   }
 }
 
-export const removeStaff = (member) =>
-  unwrap(supabase.from('profiles').update({ deleted_at: nowISO(), status: 'inativo' }).eq('id', member.id))
+/** Remove da equipe; se a pessoa também é aluna, o acesso de aluno é mantido (regra no banco) */
+export const removeStaff = (member) => unwrap(supabase.rpc('remove_staff', { p_profile: member.id }))
+
+/** Nomes de membros da equipe (ex.: professor do treino/aula), visíveis inclusive para alunos */
+export async function staffNames(ids) {
+  const unique = [...new Set(ids.filter(Boolean))]
+  if (!unique.length) return {}
+  const rows = await unwrap(supabase.rpc('staff_names', { p_ids: unique }))
+  return Object.fromEntries(rows.map((r) => [r.id, r.nome]))
+}
