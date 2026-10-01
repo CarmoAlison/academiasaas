@@ -9,6 +9,9 @@ import { classService } from '../../../services/classService'
 import { WEEKDAYS } from '../../../utils/constants'
 import { addDays, formatPhone, formatTime, toDate, toISODate } from '../../../utils/formatters'
 
+const listStyle = { listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }
+const itemStyle = { display: 'flex', alignItems: 'center', gap: 8, padding: 12, border: '1px solid var(--color-border)', borderRadius: 8 }
+
 /** Próxima data (a partir de hoje) em que a aula acontece */
 function nextOccurrence(dias) {
   for (let i = 0; i < 7; i++) {
@@ -41,6 +44,13 @@ export default function ReservasDrawer({ aula, onClose }) {
     invalidate: [['class-bookings', aula?.id, data], ['class-occupancy', academyId]],
   })
 
+  const removeMutation = useMutationToast((id) => classService.cancel(id), {
+    success: 'Removido da lista de espera',
+    invalidate: [['class-bookings', aula?.id, data]],
+  })
+
+  const reservas = (query.data ?? []).filter((b) => b.status !== 'espera')
+  const fila = (query.data ?? []).filter((b) => b.status === 'espera')
   const dow = toDate(data)?.getDay()
   const happens = aula?.dias_semana.includes(dow)
 
@@ -63,10 +73,10 @@ export default function ReservasDrawer({ aula, onClose }) {
             ) : (
               <>
                 <h3 style={{ marginBottom: 12 }}>
-                  {query.data.length}/{aula.capacidade} reservas
+                  {reservas.length}/{aula.capacidade} reservas
                 </h3>
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
-                  {query.data.map((b) => (
+                <ul style={listStyle}>
+                  {reservas.map((b) => (
                     <li
                       key={b.id}
                       style={{
@@ -106,6 +116,37 @@ export default function ReservasDrawer({ aula, onClose }) {
                     </li>
                   ))}
                 </ul>
+                {fila.length > 0 && (
+                  <>
+                    <h3 style={{ margin: '20px 0 4px' }}>Lista de espera ({fila.length})</h3>
+                    <p className="text-muted" style={{ fontSize: 12, marginBottom: 12 }}>
+                      Quando uma reserva é cancelada, o 1º da fila é reservado automaticamente.
+                    </p>
+                    <ul style={listStyle}>
+                      {fila.map((b, i) => (
+                        <li key={b.id} style={itemStyle}>
+                          <strong style={{ width: 28 }}>{i + 1}º</strong>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <strong>{b.student?.profile?.nome}</strong>
+                            <div className="text-muted" style={{ fontSize: 12 }}>
+                              {b.student?.profile?.telefone ? formatPhone(b.student.profile.telefone) : ''}
+                            </div>
+                          </div>
+                          {can('aulas.editar') && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              icon={X}
+                              aria-label="Remover da fila"
+                              loading={removeMutation.isPending && removeMutation.variables === b.id}
+                              onClick={() => removeMutation.mutate(b.id)}
+                            />
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </>
             )}
           </div>

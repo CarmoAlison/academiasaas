@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTenant } from '../../hooks/useAuth'
-import { getAcademySettings } from '../../services/academySettingsService'
+import { useAcademySettings } from '../../hooks/useAcademySettings'
+import { listStudentCheckins } from '../../services/checkinService'
 import { classService } from '../../services/classService'
 import { staffNames } from '../../services/roleService'
 import { listStudentPayments } from '../../services/paymentService'
@@ -8,6 +9,8 @@ import { getMyStudent } from '../../services/studentService'
 import { listStudentWorkouts, listWorkoutLogs } from '../../services/workoutService'
 import { addDays, toISODate } from '../../utils/formatters'
 import { startOfWeek } from '../../utils/workoutDays'
+
+export { useAcademySettings }
 
 /** Segunda-feira da semana de `date` */
 export function weekStart(date = new Date()) {
@@ -45,6 +48,12 @@ export function useMyWeekLogs() {
   })
 }
 
+/** Últimos check-ins do aluno logado */
+export function useMyCheckins() {
+  const { studentId } = useStudentId()
+  return useQuery({ queryKey: ['my-checkins', studentId], queryFn: () => listStudentCheckins(studentId, 60), enabled: Boolean(studentId) })
+}
+
 export function useMyPayments() {
   const { studentId } = useStudentId()
   return useQuery({ queryKey: ['my-payments', studentId], queryFn: () => listStudentPayments(studentId), enabled: Boolean(studentId) })
@@ -55,13 +64,8 @@ export function useMyPayments() {
  * @returns {{ inadimplente: boolean, atrasadas: object[], total: number, bloqueiaReservas: boolean, tolerancia: number }}
  */
 export function useMyDelinquency() {
-  const { academyId } = useStudentId()
   const payments = useMyPayments()
-  const settings = useQuery({
-    queryKey: ['academy-settings', academyId],
-    queryFn: () => getAcademySettings(academyId),
-    enabled: Boolean(academyId),
-  })
+  const settings = useAcademySettings()
   const tolerancia = settings.data?.dias_tolerancia ?? 5
   const limite = toISODate(addDays(new Date(), -tolerancia))
   const atrasadas = (payments.data ?? []).filter((p) => p.status === 'pendente' && p.vencimento < limite)
@@ -101,6 +105,13 @@ export function useWeekSchedule(start) {
     enabled: Boolean(studentId),
   })
 
+  const positions = useQuery({
+    queryKey: ['my-bookings', studentId, inicio, 'fila'],
+    queryFn: () => classService.myWaitlistPositions(inicio, fim),
+    enabled: Boolean(studentId),
+  })
+  const posOf = (bookingId) => positions.data?.find((p) => p.booking_id === bookingId)?.posicao ?? null
+
   const days = Array.from({ length: 7 }, (_, i) => {
     const date = addDays(start, i)
     const iso = toISODate(date)
@@ -112,6 +123,7 @@ export function useWeekSchedule(start) {
         ocupadas: occupancy.data?.find((o) => o.class_id === c.id && o.data === iso)?.total ?? 0,
         booking: bookings.data?.find((b) => b.class_id === c.id && b.data === iso && b.status !== 'cancelado') ?? null,
       }))
+      .map((c) => (c.booking?.status === 'espera' ? { ...c, posicao: posOf(c.booking.id) } : c))
       .sort((a, b) => a.horario.localeCompare(b.horario))
     return { date, iso, items }
   })

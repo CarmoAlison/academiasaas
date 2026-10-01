@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, CalendarClock, CalendarDays, DollarSign, UserPlus, Users } from 'lucide-react'
+import { AlertTriangle, CalendarClock, CalendarDays, DollarSign, ScanLine, UserPlus, Users, UserX } from 'lucide-react'
 import { BarList, SimpleAreaChart, SimpleBarChart } from '../../../components/charts/Charts'
 import QueryError from '../../../components/feedback/QueryError'
 import { Button, Card, Grid, PageHeader, StatCard, StatGrid } from '../../../components/ui'
@@ -61,6 +61,19 @@ export default function Dashboard() {
           hint="Nos próximos 7 dias"
         />
         <StatCard label="Aulas hoje" value={d?.aulas_hoje} icon={CalendarDays} tone="warning" loading={query.isPending} />
+        {d?.checkins_hoje !== undefined && (
+          <>
+            <StatCard label="Check-ins hoje" value={d.checkins_hoje} icon={ScanLine} tone="success" loading={query.isPending} />
+            <StatCard
+              label="Alunos sumidos"
+              value={d.sumidos}
+              icon={UserX}
+              tone="danger"
+              loading={query.isPending}
+              hint={`Sem check-in há ${d.dias_sumido}+ dias`}
+            />
+          </>
+        )}
         <StatCard label="Novos no mês" value={d?.novos_mes} icon={UserPlus} tone="success" loading={query.isPending} />
         <StatCard label="Receita do mês" value={formatCurrency(d?.receita_mes)} icon={DollarSign} loading={query.isPending} hint="Pagamentos recebidos" />
       </StatGrid>

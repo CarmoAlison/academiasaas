@@ -8,6 +8,18 @@ export const ACADEMY_DEFAULTS = {
   // Financeiro
   dias_tolerancia: 5,
   bloquear_reservas_inadimplente: true,
+  // Aulas
+  aulas_lista_espera: true,
+  aulas_cancelamento_horas: 2,
+  aulas_limite_semana: null,
+  // Frequência
+  dias_sumido: 10,
+  // WhatsApp (mensagens vazias = modelo padrão)
+  whatsapp_dias_lembrete: 3,
+  msg_lembrete: null,
+  msg_atraso: null,
+  msg_recibo: null,
+  msg_sumido: null,
 }
 
 /** Configurações efetivas (padrões + o que a academia salvou) */

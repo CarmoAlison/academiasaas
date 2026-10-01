@@ -1,5 +1,5 @@
 import { ChevronRight, Dumbbell, ShieldCheck, UserRound } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Avatar from '../../components/ui/Avatar'
 import Button from '../../components/ui/Button'
 import { useAuth, useLogout, useTenant } from '../../hooks/useAuth'
@@ -17,6 +17,8 @@ export default function SelecionarAcademia() {
   const { setAcademy } = useTenant()
   const logout = useLogout()
   const navigate = useNavigate()
+  // link aberto antes do login (ex.: QR Code de check-in) — segue para ele se for da área escolhida
+  const from = useLocation().state?.from
 
   const options = accessOptions(context)
   const academies = new Set(options.filter((o) => o.academyId).map((o) => o.academyId))
@@ -25,7 +27,8 @@ export default function SelecionarAcademia() {
     setAcademy(option.academyId)
     setPreferredArea(option.area === 'super' ? null : option.area)
     if (option.academyId) await logAccess(option.academyId, 'login')
-    navigate(optionPath(option), { replace: true })
+    const area = optionPath(option).split('/').slice(0, 2).join('/')
+    navigate(from?.startsWith(`${area}/`) ? from : optionPath(option), { replace: true })
   }
 
   return (

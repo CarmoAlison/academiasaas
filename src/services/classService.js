@@ -21,7 +21,7 @@ export const classService = {
         .eq('class_id', classId)
         .eq('data', data)
         .neq('status', 'cancelado')
-        .order('created_at'),
+        .order('updated_at'), // ordem de chegada (também a da lista de espera)
     ),
 
   setBookingStatus: (id, status) => unwrap(supabase.from('class_bookings').update({ status }).eq('id', id)),
@@ -31,6 +31,11 @@ export const classService = {
     unwrap(supabase.rpc('class_occupancy', { p_academy: academyId, p_inicio: inicio, p_fim: fim })),
 
   book: (classId, data) => unwrap(supabase.rpc('book_class', { p_class_id: classId, p_data: data })),
+
+  joinWaitlist: (classId, data) => unwrap(supabase.rpc('join_waitlist', { p_class_id: classId, p_data: data })),
+
+  /** @returns {Promise<Array<{booking_id: string, posicao: number}>>} posição do aluno logado nas filas */
+  myWaitlistPositions: (inicio, fim) => unwrap(supabase.rpc('my_waitlist_positions', { p_inicio: inicio, p_fim: fim })),
 
   cancel: (bookingId) => unwrap(supabase.rpc('cancel_booking', { p_booking_id: bookingId })),
 

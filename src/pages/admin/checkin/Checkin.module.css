@@ -1,0 +1,127 @@
+/* QR Code da recepção */
+.qrBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  text-align: center;
+  background: var(--color-surface);
+}
+
+.qrBox:fullscreen {
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.qrBox h2 {
+  font-size: var(--fs-24);
+}
+
+.qrBox:fullscreen h2 {
+  font-size: 40px;
+}
+
+.qrHint {
+  color: var(--color-text-muted);
+}
+
+.qrImage {
+  display: grid;
+  place-items: center;
+  width: min(360px, 80vw);
+  aspect-ratio: 1;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: #fff;
+}
+
+.qrBox:fullscreen .qrImage {
+  width: min(70vh, 90vw);
+}
+
+.qrImage img {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.qrActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.qrNote {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  max-width: 640px;
+  margin: var(--space-4) auto 0;
+  color: var(--color-text-muted);
+  font-size: var(--fs-12);
+}
+
+.qrNote svg {
+  flex-shrink: 0;
+}
+
+/* Listas */
+.list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.itemInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemInfo strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time {
+  flex-shrink: 0;
+  min-width: 48px;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+@media (min-width: 900px) {
+  .columns {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}

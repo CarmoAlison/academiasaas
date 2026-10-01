@@ -3,6 +3,7 @@ import { CheckCircle2, ChevronDown, ChevronUp, Dumbbell, PlayCircle, RotateCcw }
 import { useState } from 'react'
 import QueryError from '../../../components/feedback/QueryError'
 import { Badge, Button, EmptyState, PageHeader, SkeletonCard, Tabs } from '../../../components/ui'
+import { VideoModal } from '../../../components/video/VideoPlayer'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { completeDay, undoComplete } from '../../../services/workoutService'
 import { addDays, formatDate } from '../../../utils/formatters'
@@ -17,6 +18,7 @@ const dateOfWeekday = (dia) => (dia == null ? null : addDays(startOfWeek(), week
 
 function DayCard({ workout, day, log, defaultOpen }) {
   const [open, setOpen] = useState(defaultOpen)
+  const [video, setVideo] = useState(null)
   const queryClient = useQueryClient()
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['my-workout-logs'] })
   const isToday = day.dia_semana === todayDow()
@@ -77,9 +79,9 @@ function DayCard({ workout, day, log, defaultOpen }) {
                     </p>
                   )}
                   {it.exercise?.video_url && (
-                    <a href={it.exercise.video_url} target="_blank" rel="noreferrer" className={styles.video}>
+                    <button type="button" className={styles.video} onClick={() => setVideo(it.exercise)}>
                       <PlayCircle size={16} /> Ver vídeo
-                    </a>
+                    </button>
                   )}
                 </div>
               </div>
@@ -102,6 +104,7 @@ function DayCard({ workout, day, log, defaultOpen }) {
           )}
         </>
       )}
+      <VideoModal url={video?.video_url} title={video?.nome} onClose={() => setVideo(null)} />
     </section>
   )
 }

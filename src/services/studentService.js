@@ -1,6 +1,6 @@
 import { onlyDigits } from '../utils/formatters'
 import { applySearch, applySort, pageRange } from './paging'
-import { nowISO, supabase, unwrap, unwrapWithCount } from './supabaseClient'
+import { supabase, unwrap, unwrapWithCount } from './supabaseClient'
 
 const SELECT = `
   id, academy_id, profile_id, unit_id, plan_id, data_matricula, status, data_nascimento, responsavel,

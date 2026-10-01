@@ -274,6 +274,13 @@
   align-items: center;
   gap: 4px;
   margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: var(--fw-medium);
+  cursor: pointer;
 }
 
 /* Treinos */
@@ -345,4 +352,39 @@
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* Check-in */
+.checkinResult {
+  align-items: center;
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+}
+
+.checkinResult strong {
+  font-size: var(--fs-20);
+}
+
+.checkinOk {
+  border-color: transparent;
+  background: var(--color-success-light);
+  color: var(--color-success-text);
+}
+
+.checkinError {
+  border-color: transparent;
+  background: var(--color-danger-light);
+  color: var(--color-danger-text);
+}
+
+.checkinWarn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-danger-text);
+  font-size: var(--fs-14);
+  font-weight: var(--fw-medium);
 }

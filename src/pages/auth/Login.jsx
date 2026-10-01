@@ -42,7 +42,8 @@ export default function Login() {
     setSubmitting(true)
     try {
       const ctx = await signIn(cpf, senha, captchaToken)
-      const from = location.state?.from?.pathname
+      const fromLoc = location.state?.from
+      const from = fromLoc ? `${fromLoc.pathname}${fromLoc.search ?? ''}` : undefined
 
       const options = accessOptions(ctx)
       if (options.length === 0) {
@@ -52,7 +53,7 @@ export default function Login() {
       }
       // mais de um acesso (várias academias, ou equipe que também é aluno): o usuário escolhe
       if (options.length > 1) {
-        navigate('/selecionar-academia', { replace: true })
+        navigate('/selecionar-academia', { replace: true, state: from ? { from } : undefined })
         return
       }
       const [option] = options

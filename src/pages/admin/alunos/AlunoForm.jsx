@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Dumbbell, Plus, Trash2 } from 'lucide-react'
+import { Dumbbell, Plus, ScanLine, Trash2, UserCheck } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ResetPasswordButton from '../../../components/auth/ResetPasswordButton'
@@ -24,11 +24,12 @@ import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { planService, unitService } from '../../../services/catalogServices'
+import { listStudentCheckins, manualCheckin } from '../../../services/checkinService'
 import { listStudentPaymentsAdmin } from '../../../services/paymentService'
 import { createStudent, getStudent, removeStudent, updateStudent } from '../../../services/studentService'
 import { listWorkoutsByStudent } from '../../../services/workoutService'
 import { STUDENT_STATUS, UFS } from '../../../utils/constants'
-import { formatCEP, formatCPF, formatCurrency, formatDate, formatPhone, toISODate } from '../../../utils/formatters'
+import { formatCEP, formatCPF, formatCurrency, formatDate, formatDateTime, formatPhone, toISODate } from '../../../utils/formatters'
 import { rules } from '../../../utils/validators'
 import styles from './AlunoForm.module.css'
 
@@ -70,6 +71,15 @@ function StudentSide({ student, academyId }) {
     queryFn: () => listStudentPaymentsAdmin(academyId, student.id, 5),
     enabled: can('financeiro.ver'),
   })
+  const checkins = useQuery({
+    queryKey: ['checkins', academyId, 'student', student.id],
+    queryFn: () => listStudentCheckins(student.id, 60),
+  })
+  const checkin = useMutationToast(() => manualCheckin(student.id), {
+    success: (r) => (r?.repetido ? 'Já havia check-in nas últimas 3 horas' : 'Check-in registrado'),
+    invalidate: [['checkins', academyId]],
+  })
+  const ultimos30 = (checkins.data ?? []).filter((c) => Date.now() - new Date(c.created_at) <= 30 * 86400000).length
   const myWorkouts = (workouts.data ?? []).filter((w) => w.vigente)
   const myPayments = payments.data ?? []
 
@@ -92,6 +102,42 @@ function StudentSide({ student, academyId }) {
           </p>
         ) : (
           <p className="text-muted">Sem plano.</p>
+        )}
+      </Card>
+
+      <Card
+        title="Frequência"
+        actions={
+          can('alunos.editar') && (
+            <Button size="sm" variant="ghost" icon={UserCheck} loading={checkin.isPending} onClick={() => checkin.mutate()}>
+              Check-in
+            </Button>
+          )
+        }
+      >
+        {checkins.isPending ? (
+          <p className="text-muted">Carregando…</p>
+        ) : (
+          <>
+            <p style={{ marginBottom: 8 }}>
+              <strong>{ultimos30}</strong> check-in(s) nos últimos 30 dias
+              <br />
+              <span className="text-muted">
+                {checkins.data?.[0] ? `Último em ${formatDateTime(checkins.data[0].created_at)}` : 'Nenhum check-in ainda'}
+              </span>
+            </p>
+            {checkins.data?.length > 0 && (
+              <ul className={styles.list}>
+                {checkins.data.slice(0, 5).map((c) => (
+                  <li key={c.id}>
+                    <ScanLine size={16} />
+                    <span>{formatDateTime(c.created_at)}</span>
+                    <span className="text-muted">{c.origem === 'qr' ? 'QR Code' : 'Manual'}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </Card>
 

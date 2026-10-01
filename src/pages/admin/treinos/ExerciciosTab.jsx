@@ -1,15 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
-import { Pencil, Plus, Trash2, Video } from 'lucide-react'
-import { useState } from 'react'
+import { Pencil, Plus, Trash2, Upload, Video, X } from 'lucide-react'
+import { useRef, useState } from 'react'
 import QueryError from '../../../components/feedback/QueryError'
-import { Button, DataTable, FormGrid, FullRow, Input, Modal, Select, Textarea, useConfirm } from '../../../components/ui'
+import { Button, DataTable, FormGrid, FullRow, Input, Modal, Select, Textarea, useConfirm, useToast } from '../../../components/ui'
+import VideoPlayer, { VideoModal } from '../../../components/video/VideoPlayer'
 import { useTenant } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { usePermissions } from '../../../hooks/usePermissions'
-import { exerciseService } from '../../../services/catalogServices'
+import { exerciseService, uploadExerciseVideo } from '../../../services/catalogServices'
 import { MUSCLE_GROUPS } from '../../../utils/constants'
+import { errorMessage } from '../../../utils/errors'
 import { rules } from '../../../utils/validators'
+import { parseVideo, VIDEO_MAX_MB } from '../../../utils/video'
 
 const EMPTY = { nome: '', grupo_muscular: '', video_url: '', instrucoes: '' }
 
@@ -19,7 +22,10 @@ const EMPTY = { nome: '', grupo_muscular: '', video_url: '', instrucoes: '' }
  */
 export function ExerciseModal({ exercise, onClose, onSaved }) {
   const { academyId } = useTenant()
-  const { field, handleSubmit } = useForm(
+  const toast = useToast()
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef(null)
+  const { field, values, setValue, handleSubmit } = useForm(
     exercise
       ? { nome: exercise.nome, grupo_muscular: exercise.grupo_muscular ?? '', video_url: exercise.video_url ?? '', instrucoes: exercise.instrucoes ?? '' }
       : EMPTY,
@@ -41,6 +47,21 @@ export function ExerciseModal({ exercise, onClose, onSaved }) {
   )
   const submit = handleSubmit((v) => mutation.mutate(v))
 
+  const onFile = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploading(true)
+    try {
+      setValue('video_url', await uploadExerciseVideo(academyId, file))
+      toast.success('Vídeo enviado')
+    } catch (err) {
+      toast.error(errorMessage(err))
+    } finally {
+      setUploading(false)
+    }
+  }
+
   return (
     <Modal
       open
@@ -51,7 +72,7 @@ export function ExerciseModal({ exercise, onClose, onSaved }) {
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={submit} loading={mutation.isPending}>
+          <Button onClick={submit} loading={mutation.isPending} disabled={uploading}>
             Salvar
           </Button>
         </>
@@ -62,7 +83,29 @@ export function ExerciseModal({ exercise, onClose, onSaved }) {
           <Input label="Nome" required {...field('nome')} />
           <Select label="Grupo muscular" placeholder="Selecione" options={MUSCLE_GROUPS.map((g) => ({ value: g, label: g }))} {...field('grupo_muscular')} />
           <FullRow>
-            <Input label="Link do vídeo" type="url" placeholder="https://youtube.com/..." {...field('video_url')} />
+            <Input
+              label="Vídeo"
+              type="url"
+              placeholder="Cole o link do YouTube/Vimeo ou envie um arquivo"
+              hint={`Arquivo: MP4, WEBM ou MOV de até ${VIDEO_MAX_MB} MB`}
+              {...field('video_url')}
+            />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+              <input ref={fileRef} type="file" accept="video/mp4,video/webm,video/quicktime" hidden onChange={onFile} />
+              <Button type="button" variant="outline" size="sm" icon={Upload} loading={uploading} onClick={() => fileRef.current?.click()}>
+                {uploading ? 'Enviando…' : 'Enviar arquivo de vídeo'}
+              </Button>
+              {values.video_url && (
+                <Button type="button" variant="ghost" size="sm" icon={X} onClick={() => setValue('video_url', '')}>
+                  Remover vídeo
+                </Button>
+              )}
+            </div>
+            {values.video_url && parseVideo(values.video_url) && (
+              <div style={{ marginTop: 12 }}>
+                <VideoPlayer url={values.video_url} title={values.nome || 'Vídeo do exercício'} />
+              </div>
+            )}
           </FullRow>
           <FullRow>
             <Textarea label="Instruções de execução" {...field('instrucoes')} />
@@ -77,6 +120,7 @@ export default function ExerciciosTab() {
   const { academyId } = useTenant()
   const { can } = usePermissions()
   const [editing, setEditing] = useState(null)
+  const [watching, setWatching] = useState(null)
   const [grupo, setGrupo] = useState('')
   const [confirm, confirmDialog] = useConfirm()
   const query = useQuery({ queryKey: ['exercises', academyId], queryFn: () => exerciseService.list(academyId) })
@@ -112,9 +156,9 @@ export default function ExerciciosTab() {
             sortable: false,
             render: (e) =>
               e.video_url ? (
-                <a href={e.video_url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
-                  <Video size={15} /> Assistir
-                </a>
+                <Button variant="ghost" size="sm" icon={Video} onClick={() => setWatching(e)}>
+                  Assistir
+                </Button>
               ) : (
                 '—'
               ),
@@ -146,6 +190,7 @@ export default function ExerciciosTab() {
         ]}
       />
       {editing && <ExerciseModal exercise={editing.id ? editing : null} onClose={() => setEditing(null)} />}
+      <VideoModal url={watching?.video_url} title={watching?.nome} onClose={() => setWatching(null)} />
     </>
   )
 }

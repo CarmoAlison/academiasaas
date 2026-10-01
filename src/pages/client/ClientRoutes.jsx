@@ -7,6 +7,7 @@ const Treinos = lazy(() => import('./treinos/Treinos'))
 const Aulas = lazy(() => import('./aulas/Aulas'))
 const Financeiro = lazy(() => import('./financeiro/Financeiro'))
 const Perfil = lazy(() => import('./perfil/Perfil'))
+const Checkin = lazy(() => import('./checkin/Checkin'))
 
 /** Rotas /client/* (protegidas por RoleGuard em AppRoutes) */
 export const clientRoutes = (
@@ -17,5 +18,6 @@ export const clientRoutes = (
     <Route path="aulas" element={<Aulas />} />
     <Route path="financeiro" element={<Financeiro />} />
     <Route path="perfil" element={<Perfil />} />
+    <Route path="checkin" element={<Checkin />} />
   </Route>
 )

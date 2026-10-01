@@ -1,11 +1,11 @@
-import { CalendarDays, ChevronRight, CreditCard, Dumbbell, IdCard } from 'lucide-react'
+import { CalendarDays, ChevronRight, CreditCard, Dumbbell, IdCard, ScanLine } from 'lucide-react'
 import { Button, SkeletonCard, StatusBadge } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { firstName, formatCurrency, formatDate, formatTime, paymentStatus, toDate, toISODate } from '../../../utils/formatters'
 import { dayLabel, exercisesLabel, weekPosition } from '../../../utils/workoutDays'
 import DelinquencyBanner from '../DelinquencyBanner'
 import styles from '../client.module.css'
-import { useMyPayments, useMyStudent, useMyWeekLogs, useMyWorkouts, useWeekSchedule, weekStart } from '../useStudent'
+import { useMyCheckins, useMyPayments, useMyStudent, useMyWeekLogs, useMyWorkouts, useWeekSchedule, weekStart } from '../useStudent'
 
 const greeting = () => {
   const h = new Date().getHours()
@@ -19,6 +19,7 @@ export default function Dashboard() {
   const logs = useMyWeekLogs()
   const payments = useMyPayments()
   const week = useWeekSchedule(weekStart())
+  const checkins = useMyCheckins()
   const today = toISODate()
 
   // Treino da semana: ficha ativa, dia de hoje e progresso
@@ -30,9 +31,12 @@ export default function Dashboard() {
   const doneWeek = ficha ? ficha.days.filter((d) => doneIds.has(d.id)).length : 0
   const doneToday = Boolean(todayDay && doneIds.has(todayDay.id))
 
-  const myClasses = week.days.flatMap((d) => d.items.filter((i) => i.booking && d.iso >= today))
+  const myClasses = week.days.flatMap((d) => d.items.filter((i) => i.booking && i.booking.status !== 'espera' && d.iso >= today))
   const pending = (payments.data ?? []).filter((p) => p.status === 'pendente').sort((a, b) => a.vencimento.localeCompare(b.vencimento))
   const s = student.data
+  const mesAtual = today.slice(0, 7)
+  const checkinsMes = (checkins.data ?? []).filter((c) => toISODate(new Date(c.created_at)).startsWith(mesAtual)).length
+  const ultimoCheckin = checkins.data?.[0]?.created_at
 
   return (
     <>
@@ -111,6 +115,23 @@ export default function Dashboard() {
               </span>
             </>
           )}
+        </section>
+
+        <section className={styles.tile}>
+          <div className={styles.tileHeader}>
+            <span className={styles.tileTitle}>
+              <ScanLine size={16} /> Frequência
+            </span>
+            <Button variant="ghost" size="sm" to="/client/checkin">
+              Histórico
+            </Button>
+          </div>
+          <span className={styles.big}>
+            {checkinsMes} {checkinsMes === 1 ? 'treino' : 'treinos'} este mês
+          </span>
+          <span className={styles.muted}>
+            {ultimoCheckin ? `Último check-in em ${formatDate(ultimoCheckin)}` : 'Faça check-in pelo QR Code da recepção'}
+          </span>
         </section>
 
         <section className={styles.tile}>
