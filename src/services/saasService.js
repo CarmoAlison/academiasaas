@@ -134,11 +134,12 @@ export const createSuperAdmin = (values) =>
       p_nome: values.nome,
       p_cpf: onlyDigits(values.cpf),
       p_email: values.email || null,
+      p_papel: values.papel || 'admin',
     }),
   )
 
 export const updateSuperAdmin = (id, values) =>
-  unwrap(supabase.from('super_admins').update({ nome: values.nome, email: values.email || null }).eq('id', id))
+  unwrap(supabase.from('super_admins').update({ nome: values.nome, email: values.email || null, papel: values.papel || 'admin' }).eq('id', id))
 
 export const removeSuperAdmin = (id) => unwrap(supabase.from('super_admins').delete().eq('id', id))
 

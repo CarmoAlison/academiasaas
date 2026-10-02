@@ -196,3 +196,37 @@
     pointer-events: auto;
   }
 }
+
+/* Contador no item do menu (ex.: chamados não lidos) */
+.iconWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.linkLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+.badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-danger);
+  color: var(--color-white);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  line-height: 20px;
+  text-align: center;
+}
+
+.dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-danger);
+}

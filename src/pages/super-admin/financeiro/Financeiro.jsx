@@ -24,6 +24,7 @@ import { cancelInvoice, generateInvoices, listSaasInvoices, markInvoicePaid, reo
 import { PAYMENT_METHODS } from '../../../utils/constants'
 import { exportCSV } from '../../../utils/csv'
 import { formatCurrency, formatDate, paymentStatus, toISODate } from '../../../utils/formatters'
+import { useSuperRole } from '../../../hooks/useSuperRole'
 
 const monthStart = () => toISODate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)).slice(0, 7)
 
@@ -66,6 +67,7 @@ function PayInvoiceModal({ invoice, onClose, onPaid, invalidate }) {
 }
 
 export default function Financeiro() {
+  const { superCan } = useSuperRole()
   const [competencia, setCompetencia] = useState(monthStart())
   const [status, setStatus] = useState('')
   const [paying, setPaying] = useState(null)
@@ -126,9 +128,11 @@ export default function Financeiro() {
         subtitle="Mensalidades do SaaS pagas pelas academias"
         actions={
           <>
-            <Button variant="outline" icon={Palette} to="/super-admin/financeiro/recibo">
-              Personalizar recibo
-            </Button>
+            {superCan('config') && (
+              <Button variant="outline" icon={Palette} to="/super-admin/financeiro/recibo">
+                Personalizar recibo
+              </Button>
+            )}
             <Button variant="outline" icon={Download} onClick={onExport} disabled={!rows.length}>
               Exportar CSV
             </Button>

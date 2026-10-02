@@ -1,0 +1,86 @@
+.wrap {
+  display: grid;
+  gap: 1px;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-primary-light);
+  color: var(--color-text);
+  font-size: var(--fs-14);
+}
+
+.item > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-primary);
+}
+
+.text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.text a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: var(--fw-semibold);
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin: -4px -6px -4px 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.novidade {
+  background: var(--color-success-light);
+}
+
+.novidade > svg {
+  color: var(--color-success-text);
+}
+
+.manutencao {
+  background: var(--color-warning-light);
+}
+
+.manutencao > svg {
+  color: var(--color-warning-text);
+}
+
+.urgente {
+  background: var(--color-danger-light);
+}
+
+.urgente > svg {
+  color: var(--color-danger-text);
+}
+
+@media (max-width: 640px) {
+  .item {
+    padding: var(--space-3) var(--space-4);
+  }
+}

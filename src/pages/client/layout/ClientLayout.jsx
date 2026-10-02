@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import ErrorBoundary from '../../../components/feedback/ErrorBoundary'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
+import AnnouncementBanner from '../../../components/announcements/AnnouncementBanner'
 import BottomNav from '../../../components/shell/BottomNav'
 import ThemeToggle from '../../../components/shell/ThemeToggle'
 import UserMenu from '../../../components/shell/UserMenu'
@@ -57,6 +58,7 @@ export default function ClientLayout() {
           </div>
         </div>
       </header>
+      <AnnouncementBanner />
 
       <main className={styles.content}>
         <ErrorBoundary key={location.pathname}>

@@ -32,6 +32,7 @@ const ConfiguracoesAcademia = lazy(() => import('./configuracoes/ConfiguracoesAc
 const Checkin = lazy(() => import('./checkin/Checkin'))
 const WhatsappPanel = lazy(() => import('./whatsapp/WhatsappPanel'))
 const Relatorios = lazy(() => import('./relatorios/Relatorios'))
+const Suporte = lazy(() => import('./suporte/Suporte'))
 
 const guard = (perm, element) => <PermissionGuard perm={perm}>{element}</PermissionGuard>
 
@@ -82,6 +83,9 @@ export const adminRoutes = (
 
     <Route path="assinatura" element={guard(ADMIN_ONLY, <Assinatura />)} />
     <Route path="configuracoes" element={guard(ADMIN_ONLY, <ConfiguracoesAcademia />)} />
+
+    <Route path="suporte" element={<Suporte />} />
+    <Route path="suporte/:id" element={<Suporte />} />
 
     <Route path="perfil" element={<Perfil />} />
   </Route>

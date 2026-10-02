@@ -36,8 +36,10 @@ import {
 import { ACADEMY_STATUS } from '../../../utils/constants'
 import { formatCNPJ, formatCPF, formatCurrency, formatDate, formatPhone, paymentStatus } from '../../../utils/formatters'
 import { rules } from '../../../utils/validators'
+import { useSuperRole } from '../../../hooks/useSuperRole'
 
 function EditForm({ academy }) {
+  const canEdit = useSuperRole().superCan('academias')
   const plans = useQuery({ queryKey: ['saas-plans'], queryFn: listSaasPlans })
   const { field, handleSubmit, reset } = useForm(
     {
@@ -82,18 +84,21 @@ function EditForm({ academy }) {
         />
         <Select label="Status" options={ACADEMY_STATUS} {...field('status')} />
       </FormGrid>
-      <div style={{ marginTop: 20 }}>
-        <FormActions>
-          <Button type="submit" loading={mutation.isPending}>
-            Salvar
-          </Button>
-        </FormActions>
-      </div>
+      {canEdit && (
+        <div style={{ marginTop: 20 }}>
+          <FormActions>
+            <Button type="submit" loading={mutation.isPending}>
+              Salvar
+            </Button>
+          </FormActions>
+        </div>
+      )}
     </form>
   )
 }
 
 export default function AcademiaDetalhe() {
+  const { superCan } = useSuperRole()
   const { id } = useParams()
   const navigate = useNavigate()
   const { setAcademy } = useTenant()
@@ -134,19 +139,23 @@ export default function AcademiaDetalhe() {
         breadcrumb={[{ label: 'Academias', to: '/super-admin/academias' }, { label: a.nome }]}
         actions={
           <>
-            <Button variant="outline" icon={Trash2} onClick={onRemove}>
-              Excluir
-            </Button>
-            <Button
-              icon={LogIn}
-              disabled={a.status !== 'ativa'}
-              onClick={() => {
-                setAcademy(a.id)
-                navigate('/admin')
-              }}
-            >
-              Acessar como admin
-            </Button>
+            {superCan('academias') && (
+              <Button variant="outline" icon={Trash2} onClick={onRemove}>
+                Excluir
+              </Button>
+            )}
+            {superCan('acessar') && (
+              <Button
+                icon={LogIn}
+                disabled={a.status !== 'ativa'}
+                onClick={() => {
+                  setAcademy(a.id)
+                  navigate('/admin')
+                }}
+              >
+                Acessar como admin
+              </Button>
+            )}
           </>
         }
       />

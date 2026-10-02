@@ -2,9 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import QueryError from '../../../components/feedback/QueryError'
-import { Badge, Button, DataTable, FormGrid, Input, Modal, PageHeader, Tooltip, useConfirm } from '../../../components/ui'
+import { Badge, Button, DataTable, FormGrid, Input, Modal, PageHeader, Select, Tooltip, useConfirm } from '../../../components/ui'
 import { useAuth } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
+import { SUPER_ROLES } from '../../../hooks/useSuperRole'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import {
   createSuperAdmin,
@@ -18,8 +19,8 @@ import { rules } from '../../../utils/validators'
 
 function UserModal({ user, onClose }) {
   const isNew = !user
-  const { field, handleSubmit } = useForm(
-    { nome: user?.nome ?? '', cpf: formatCPF(user?.cpf ?? ''), email: user?.email ?? '' },
+  const { field, values, handleSubmit } = useForm(
+    { nome: user?.nome ?? '', cpf: formatCPF(user?.cpf ?? ''), email: user?.email ?? '', papel: user?.papel ?? 'suporte' },
     { nome: [rules.required()], cpf: isNew ? [rules.required(), rules.cpf()] : [], email: [rules.email()] },
   )
   const mutation = useMutationToast((v) => (isNew ? createSuperAdmin(v) : updateSuperAdmin(user.id, v)), {
@@ -33,7 +34,7 @@ function UserModal({ user, onClose }) {
     <Modal
       open
       onClose={onClose}
-      title={isNew ? 'Novo super admin' : 'Editar super admin'}
+      title={isNew ? 'Novo usuário do SaaS' : 'Editar usuário do SaaS'}
       size="sm"
       footer={
         <>
@@ -51,6 +52,12 @@ function UserModal({ user, onClose }) {
           <Input label="Nome" required {...field('nome')} />
           <Input label="CPF (login)" required={isNew} disabled={!isNew} inputMode="numeric" {...field('cpf', { mask: 'cpf' })} />
           <Input label="E-mail" type="email" {...field('email')} />
+          <Select
+            label="Papel"
+            options={SUPER_ROLES.map((r) => ({ value: r.value, label: r.label }))}
+            hint={SUPER_ROLES.find((r) => r.value === values.papel)?.description}
+            {...field('papel')}
+          />
         </FormGrid>
       </form>
     </Modal>
@@ -73,10 +80,10 @@ export default function Usuarios() {
       {confirmDialog}
       <PageHeader
         title="Usuários"
-        subtitle="Super admins com acesso total ao SaaS"
+        subtitle="Equipe do SaaS: Administrador (tudo), Suporte (academias, logs, chamados e avisos) e Financeiro (faturas e planos)"
         actions={
           <Button icon={Plus} onClick={() => setEditing({})}>
-            Novo super admin
+            Novo usuário
           </Button>
         }
       />
@@ -93,6 +100,11 @@ export default function Usuarios() {
                 <strong>{u.nome}</strong> {u.user_id === me?.id && <Badge tone="info">Você</Badge>}
               </>
             ),
+          },
+          {
+            key: 'papel',
+            header: 'Papel',
+            render: (u) => <Badge tone={u.papel === 'admin' ? 'info' : u.papel === 'financeiro' ? 'success' : 'warning'}>{SUPER_ROLES.find((r) => r.value === u.papel)?.label ?? u.papel}</Badge>,
           },
           { key: 'cpf', header: 'CPF', render: (u) => formatCPF(u.cpf) },
           { key: 'email', header: 'E-mail', render: (u) => u.email ?? '—' },

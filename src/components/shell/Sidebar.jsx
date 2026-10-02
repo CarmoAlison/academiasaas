@@ -53,8 +53,12 @@ export default function Sidebar({ brand, groups, collapsed, onToggleCollapse, mo
                     onClick={onMobileClose}
                     className={({ isActive }) => `${styles.link} ${isActive ? styles.active : ''}`}
                   >
-                    <Icon size={19} aria-hidden />
-                    {!collapsed && <span>{item.label}</span>}
+                    <span className={styles.iconWrap}>
+                      <Icon size={19} aria-hidden />
+                      {collapsed && item.badge ? <span className={styles.dot} aria-hidden /> : null}
+                    </span>
+                    {!collapsed && <span className={styles.linkLabel}>{item.label}</span>}
+                    {!collapsed && item.badge ? <span className={styles.badge}>{item.badge}</span> : null}
                     {collapsed && <span className="sr-only">{item.label}</span>}
                   </NavLink>
                 )

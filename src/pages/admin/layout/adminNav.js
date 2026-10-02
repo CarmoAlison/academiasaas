@@ -5,6 +5,7 @@ import {
   Dumbbell,
   FileClock,
   LayoutDashboard,
+  LifeBuoy,
   MapPin,
   MessageCircle,
   Package,
@@ -52,11 +53,21 @@ export const ADMIN_NAV = [
       // "assinatura.ver" não existe na matriz de permissões: só o perfil Admin (e o Super Admin) enxerga
       { to: '/admin/assinatura', label: 'Assinatura do sistema', icon: Receipt, perms: [ADMIN_ONLY] },
       { to: '/admin/configuracoes', label: 'Configurações', icon: Settings, perms: [ADMIN_ONLY] },
+      // chamados com o suporte do SaaS: toda a equipe da academia
+      { to: '/admin/suporte', label: 'Suporte', icon: LifeBuoy, staffOnly: true, badgeKey: 'suporte' },
     ],
   },
 ]
 
-/** Filtra o menu conforme as permissões */
-export function visibleNav(canAny) {
-  return ADMIN_NAV.map((g) => ({ ...g, items: g.items.filter((i) => canAny(i.perms)) })).filter((g) => g.items.length)
+/**
+ * Filtra o menu conforme as permissões. Itens sem `perms` valem para toda a equipe
+ * (exceto `staffOnly` no "acessar como" do Super Admin). `badges` = contadores por `badgeKey`.
+ */
+export function visibleNav(canAny, { impersonating = false, badges = {} } = {}) {
+  return ADMIN_NAV.map((g) => ({
+    ...g,
+    items: g.items
+      .filter((i) => (i.perms ? canAny(i.perms) : !(i.staffOnly && impersonating)))
+      .map((i) => (i.badgeKey ? { ...i, badge: badges[i.badgeKey] } : i)),
+  })).filter((g) => g.items.length)
 }

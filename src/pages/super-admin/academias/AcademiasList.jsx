@@ -9,8 +9,10 @@ import { useMutationToast } from '../../../hooks/useMutationToast'
 import { listAcademies, listSaasPlans, setAcademyStatus } from '../../../services/saasService'
 import { ACADEMY_STATUS } from '../../../utils/constants'
 import { formatCNPJ, formatDate } from '../../../utils/formatters'
+import { useSuperRole } from '../../../hooks/useSuperRole'
 
 export default function AcademiasList() {
+  const { superCan } = useSuperRole()
   const navigate = useNavigate()
   const { setAcademy } = useTenant()
   const [confirm, confirmDialog] = useConfirm()
@@ -55,9 +57,11 @@ export default function AcademiasList() {
         title="Academias"
         subtitle="Todas as academias clientes do SaaS"
         actions={
-          <Button icon={Plus} to="/super-admin/academias/nova">
-            Nova academia
-          </Button>
+          superCan('academias') && (
+            <Button icon={Plus} to="/super-admin/academias/nova">
+              Nova academia
+            </Button>
+          )
         }
       />
       {confirmDialog}
@@ -97,18 +101,22 @@ export default function AcademiasList() {
                 <Tooltip content="Ver / editar">
                   <Button variant="ghost" size="sm" icon={Eye} to={`/super-admin/academias/${a.id}`} aria-label="Ver" />
                 </Tooltip>
-                <Tooltip content="Acessar como admin">
-                  <Button variant="ghost" size="sm" icon={LogIn} onClick={() => accessAs(a)} aria-label="Acessar como" disabled={a.status !== 'ativa'} />
-                </Tooltip>
-                <Tooltip content={a.status === 'ativa' ? 'Inativar' : 'Reativar'}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={a.status === 'ativa' ? Ban : CheckCircle2}
-                    onClick={() => toggleStatus(a)}
-                    aria-label={a.status === 'ativa' ? 'Inativar' : 'Reativar'}
-                  />
-                </Tooltip>
+                {superCan('acessar') && (
+                  <Tooltip content="Acessar como admin">
+                    <Button variant="ghost" size="sm" icon={LogIn} onClick={() => accessAs(a)} aria-label="Acessar como" disabled={a.status !== 'ativa'} />
+                  </Tooltip>
+                )}
+                {superCan('academias') && (
+                  <Tooltip content={a.status === 'ativa' ? 'Inativar' : 'Reativar'}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={a.status === 'ativa' ? Ban : CheckCircle2}
+                      onClick={() => toggleStatus(a)}
+                      aria-label={a.status === 'ativa' ? 'Inativar' : 'Reativar'}
+                    />
+                  </Tooltip>
+                )}
               </div>
             ),
           },

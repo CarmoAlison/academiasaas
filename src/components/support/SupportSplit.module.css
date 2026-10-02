@@ -1,0 +1,52 @@
+/* Lista à esquerda, conversa à direita; no celular, uma coisa de cada vez */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 1000px) {
+  .split {
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 999px) {
+  .hasSelection .listCol {
+    display: none;
+  }
+
+  .noSelection .detailCol {
+    display: none;
+  }
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.back {
+  margin-bottom: var(--space-3);
+}
+
+@media (min-width: 1000px) {
+  .back {
+    display: none;
+  }
+}
+
+.placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.toolbar > * {
+  flex: 1 1 160px;
+}

@@ -1,5 +1,7 @@
+import { useQuery } from '@tanstack/react-query'
 import { ArrowLeftCircle, Eye } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import AnnouncementBanner from '../../../components/announcements/AnnouncementBanner'
 import AppShell from '../../../components/shell/AppShell'
 import ThemeToggle from '../../../components/shell/ThemeToggle'
 import UserMenu from '../../../components/shell/UserMenu'
@@ -7,6 +9,7 @@ import { Badge, Button } from '../../../components/ui'
 import { useAuth, useTenant } from '../../../hooks/useAuth'
 import { useBrand } from '../../../hooks/useBrand'
 import { usePermissions } from '../../../hooks/usePermissions'
+import { unreadTickets } from '../../../services/supportService'
 import { setPreferredArea } from '../../../routes/accessOptions'
 import styles from './AdminLayout.module.css'
 import { visibleNav } from './adminNav'
@@ -14,8 +17,15 @@ import { visibleNav } from './adminNav'
 /** Layout da academia: sidebar + topbar */
 export default function AdminLayout() {
   const { context } = useAuth()
-  const { academy, membership, impersonating, setAcademy } = useTenant()
+  const { academy, academyId, membership, impersonating, setAcademy } = useTenant()
   const { canAny, roles } = usePermissions()
+  // respostas do suporte ainda não lidas (contador no menu)
+  const unreadSupport = useQuery({
+    queryKey: ['tickets-unread', academyId],
+    queryFn: () => unreadTickets({ academyId }),
+    enabled: Boolean(academyId) && !impersonating,
+    refetchInterval: 60000,
+  })
   const navigate = useNavigate()
   const brand = useBrand()
 
@@ -33,7 +43,7 @@ export default function AdminLayout() {
   return (
     <AppShell
       brand={{ title: academy?.nome ?? 'Academia', subtitle: 'Gestão', logo: brand.logo }}
-      groups={visibleNav(canAny)}
+      groups={visibleNav(canAny, { impersonating, badges: { suporte: unreadSupport.data || null } })}
       topbarLeft={
         <div className={styles.topLeft}>
           <strong className={styles.academy}>{academy?.nome}</strong>
@@ -57,16 +67,19 @@ export default function AdminLayout() {
         </>
       }
       banner={
-        impersonating && (
-          <div className={styles.banner}>
-            <span>
-              Você está acessando <strong>{academy?.nome}</strong> como Super Admin. Todas as ações são auditadas.
-            </span>
-            <Button size="sm" variant="outline" icon={ArrowLeftCircle} onClick={exitImpersonation}>
-              Voltar ao painel
-            </Button>
-          </div>
-        )
+        <>
+          {impersonating && (
+            <div className={styles.banner}>
+              <span>
+                Você está acessando <strong>{academy?.nome}</strong> como Super Admin. Todas as ações são auditadas.
+              </span>
+              <Button size="sm" variant="outline" icon={ArrowLeftCircle} onClick={exitImpersonation}>
+                Voltar ao painel
+              </Button>
+            </div>
+          )}
+          <AnnouncementBanner />
+        </>
       }
     />
   )

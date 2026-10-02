@@ -7,8 +7,10 @@ import { Button, Card, DataTable, Grid, PageHeader, StatCard, StatGrid, StatusBa
 import { superDashboard } from '../../../services/dashboardService'
 import { listAcademies } from '../../../services/saasService'
 import { formatCurrency, formatDate, formatMonth } from '../../../utils/formatters'
+import { useSuperRole } from '../../../hooks/useSuperRole'
 
 export default function Dashboard() {
+  const { superCan } = useSuperRole()
   const navigate = useNavigate()
   const stats = useQuery({ queryKey: ['super-dashboard'], queryFn: superDashboard })
   const academies = useQuery({ queryKey: ['academies'], queryFn: listAcademies })
@@ -22,9 +24,11 @@ export default function Dashboard() {
         title="Dashboard"
         subtitle="Visão geral do SaaS"
         actions={
-          <Button icon={Plus} to="/super-admin/academias/nova">
-            Nova academia
-          </Button>
+          superCan('academias') && (
+            <Button icon={Plus} to="/super-admin/academias/nova">
+              Nova academia
+            </Button>
+          )
         }
       />
 
