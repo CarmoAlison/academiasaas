@@ -12,7 +12,7 @@ import { ADMIN_ONLY } from '../layout/adminNav'
 import styles from './Checkin.module.css'
 
 /**
- * QR Code dinâmico para a tela/tablet da recepção. Muda a cada 30 s:
+ * QR Code dinâmico para a tela/tablet da recepção. Muda a cada 5 minutos:
  * foto do QR não serve para fazer check-in de casa.
  */
 export default function QrPanel() {
@@ -27,7 +27,7 @@ export default function QrPanel() {
     queryKey: ['checkin-qr', academyId],
     queryFn: () => checkinQr(academyId),
     // renova logo depois de expirar
-    refetchInterval: (q) => ((q.state.data?.expira_em ?? 30) + 0.5) * 1000,
+    refetchInterval: (q) => ((q.state.data?.expira_em ?? 300) + 0.5) * 1000,
     refetchIntervalInBackground: true,
     staleTime: 0,
   })
@@ -65,7 +65,7 @@ export default function QrPanel() {
         <h2>{academy?.nome}</h2>
         <p className={styles.qrHint}>Aponte a câmera do celular para o código e faça o check-in</p>
         <div className={styles.qrImage}>{image ? <img src={image} alt="QR Code de check-in" /> : <Spinner />}</div>
-        <p className="text-muted">{left !== null ? `Novo código em ${left}s` : ' '}</p>
+        <p className="text-muted">{left !== null ? `Novo código em ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : ' '}</p>
       </div>
       <div className={styles.qrActions}>
         <Button variant="outline" icon={Maximize2} onClick={() => boxRef.current?.requestFullscreen?.()}>
@@ -93,7 +93,7 @@ export default function QrPanel() {
         )}
       </div>
       <p className={styles.qrNote}>
-        <ShieldAlert size={16} /> Deixe esta tela aberta num tablet ou monitor na recepção. O código muda sozinho a cada 30 segundos, então uma foto
+        <ShieldAlert size={16} /> Deixe esta tela aberta num tablet ou monitor na recepção. O código muda sozinho a cada 5 minutos, então uma foto
         dele não funciona depois. O aluno precisa estar logado no celular.
       </p>
     </Card>

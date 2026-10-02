@@ -1,52 +1,149 @@
+/* ---------------------------------------------------------------------
+   Login: foto de academia com sobreposição azul, ondas e cartão flutuante
+   (tudo estático: sem animação)
+   --------------------------------------------------------------------- */
 .page {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  min-height: 100vh;
-}
-
-.brandPanel {
+  position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: var(--space-10);
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.hero {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
   background:
-    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.12), transparent 40%),
-    var(--gradient-brand);
+    linear-gradient(120deg, rgba(0, 38, 72, 0.94) 0%, rgba(0, 84, 140, 0.88) 45%, rgba(0, 110, 184, 0.78) 100%),
+    url('/images/login-academia.webp') center / cover no-repeat,
+    #00548c;
+}
+
+:global(:root[data-theme='dark']) .hero {
+  background:
+    linear-gradient(120deg, rgba(4, 12, 22, 0.95) 0%, rgba(8, 34, 58, 0.92) 50%, rgba(16, 64, 104, 0.86) 100%),
+    url('/images/login-academia.webp') center / cover no-repeat,
+    #0b1117;
+}
+
+/* anéis e pontinhos decorativos */
+.ring1,
+.ring2 {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ring1 {
+  top: -180px;
+  right: -120px;
+  width: 520px;
+  height: 520px;
+  box-shadow:
+    0 0 0 60px rgba(255, 255, 255, 0.03),
+    0 0 0 140px rgba(255, 255, 255, 0.02);
+}
+
+.ring2 {
+  bottom: 22%;
+  left: -140px;
+  width: 320px;
+  height: 320px;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dots {
+  position: absolute;
+  top: 18%;
+  left: 46%;
+  width: 180px;
+  height: 120px;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1.5px, transparent 1.5px);
+  background-size: 18px 18px;
+}
+
+.waves {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 34%;
+  min-height: 180px;
+}
+
+.wave1 {
+  fill: rgba(255, 255, 255, 0.07);
+}
+
+.wave2 {
+  fill: rgba(255, 255, 255, 0.12);
+}
+
+.wave3 {
+  fill: var(--color-bg);
+}
+
+/* conteúdo sobre a foto */
+.content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 440px);
+  align-items: center;
+  gap: var(--space-10);
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: var(--space-10) var(--space-8) 96px;
+}
+
+.pitch {
+  max-width: 480px;
   color: var(--color-white);
 }
 
-.brand,
-.mobileBrand {
+.brand {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  margin-bottom: var(--space-10);
   font-size: var(--fs-16);
 }
 
 .logo {
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   width: 40px;
   height: 40px;
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.16);
 }
 
-.pitch {
-  max-width: 440px;
+.brand .logo {
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .pitch h2 {
-  font-size: var(--fs-32);
-  font-weight: var(--fw-bold);
-  line-height: 1.15;
   margin-bottom: var(--space-4);
+  font-size: 40px;
+  font-weight: var(--fw-bold);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
 }
 
 .pitch p {
-  opacity: 0.85;
-  font-size: var(--fs-16);
   margin-bottom: var(--space-6);
+  font-size: 17px;
+  opacity: 0.88;
 }
 
 .pitch ul {
@@ -61,52 +158,54 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  opacity: 0.92;
+  font-weight: var(--fw-medium);
 }
 
-.copy {
-  opacity: 0.7;
+.pitch li > span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* cartão do formulário */
+.card {
+  position: relative;
+  width: 100%;
+  padding: var(--space-10) var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: 24px;
+  background: var(--color-surface);
+  box-shadow:
+    0 30px 80px rgba(0, 30, 60, 0.35),
+    0 8px 24px rgba(0, 30, 60, 0.12);
 }
 
 .themeCorner {
   position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
-}
-
-.formPanel {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-8) var(--space-4);
-  background: var(--color-surface);
-}
-
-.formBox {
-  width: 100%;
-  max-width: 400px;
-}
-
-.mobileBrand {
-  display: none;
-  margin-bottom: var(--space-8);
-  color: var(--color-primary);
-}
-
-.mobileBrand .logo {
-  background: var(--color-primary);
-  color: var(--color-white);
+  top: var(--space-3);
+  right: var(--space-3);
 }
 
 .title {
-  font-size: var(--fs-24);
   margin-bottom: var(--space-2);
+  font-size: var(--fs-24);
 }
 
 .subtitle {
-  color: var(--color-text-muted);
   margin-bottom: var(--space-6);
+  color: var(--color-text-muted);
+}
+
+.copy {
+  position: relative;
+  z-index: 1;
+  padding: 0 var(--space-8) var(--space-5);
+  color: var(--color-text-muted);
+  text-align: center;
 }
 
 .form {
@@ -195,16 +294,67 @@
   font-size: var(--fs-14);
 }
 
+
+/* Tablet e celular: foto + ondas no topo, cartão logo abaixo */
 @media (max-width: 900px) {
-  .page {
-    grid-template-columns: 1fr;
+  .hero {
+    bottom: auto;
+    height: 360px;
   }
 
-  .brandPanel {
+  .waves {
+    height: 120px;
+    min-height: 0;
+  }
+
+  .dots,
+  .ring2 {
     display: none;
   }
 
-  .mobileBrand {
-    display: flex;
+  .ring1 {
+    top: -260px;
+    right: -260px;
+  }
+
+  .content {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-6);
+    padding: var(--space-8) var(--space-4) var(--space-6);
+  }
+
+  .pitch {
+    max-width: none;
+  }
+
+  .brand {
+    margin-bottom: var(--space-5);
+  }
+
+  .pitch h2 {
+    font-size: 28px;
+  }
+
+  .pitch p {
+    margin-bottom: 0;
+    font-size: var(--fs-14);
+  }
+
+  .pitch ul {
+    display: none;
+  }
+
+  .card {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-5);
+    border-radius: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  .pitch h2 {
+    font-size: 24px;
   }
 }
