@@ -20,7 +20,7 @@ export const TICKET_STATUS = [
   { value: 'aberto', label: 'Aberto', tone: 'warning' },
   { value: 'em_andamento', label: 'Em andamento', tone: 'info' },
   { value: 'respondido', label: 'Respondido', tone: 'success' },
-  { value: 'resolvido', label: 'Resolvido', tone: 'neutral' },
+  { value: 'resolvido', label: 'Finalizado', tone: 'neutral' },
 ]
 
 /** Chamados (a RLS limita: equipe vê os da academia; suporte do SaaS vê todos) */

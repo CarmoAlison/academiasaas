@@ -6,6 +6,7 @@ import ThemeToggle from '../../../components/shell/ThemeToggle'
 import UserMenu from '../../../components/shell/UserMenu'
 import { useAuth } from '../../../hooks/useAuth'
 import { useSuperRole } from '../../../hooks/useSuperRole'
+import { useSupportRealtime } from '../../../hooks/useSupportRealtime'
 import { unreadTickets } from '../../../services/supportService'
 
 /** `area`: permissão do papel necessária (ver useSuperRole); sem área = todos */
@@ -48,6 +49,7 @@ export default function SuperAdminLayout() {
   const { superCan, label } = useSuperRole()
   const admin = context?.super_admin
 
+  useSupportRealtime(superCan('suporte'))
   const unread = useQuery({
     queryKey: ['tickets-unread', 'suporte'],
     queryFn: () => unreadTickets({ suporte: true }),

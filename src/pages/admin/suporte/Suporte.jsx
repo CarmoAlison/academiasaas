@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, CheckCircle2, LifeBuoy, Plus, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -10,6 +10,7 @@ import { Button, Card, FormGrid, FullRow, Input, Modal, PageHeader, Select, Tabs
 import { useTenant } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
+import { patchTicketInCache } from '../../../hooks/useSupportRealtime'
 import { listTickets, openTicket, setTicketStatus, TICKET_CATEGORIES, TICKET_PRIORITIES } from '../../../services/supportService'
 import { rules } from '../../../utils/validators'
 
@@ -70,6 +71,7 @@ function NewTicketModal({ onClose, onCreated }) {
 
 /** Central de suporte da academia: chamados com a equipe do SaaS */
 export default function Suporte() {
+  const queryClient = useQueryClient()
   const { academyId } = useTenant()
   const { id } = useParams()
   const navigate = useNavigate()
@@ -79,15 +81,27 @@ export default function Suporte() {
   const tickets = useQuery({
     queryKey: ['tickets', academyId, filtro],
     queryFn: () => listTickets({ academyId, status: filtro === 'todos' ? null : 'abertos' }),
-    refetchInterval: 30000,
+    refetchInterval: 60000, // reserva: o normal é chegar pelo Realtime
   })
   const all = useQuery({ queryKey: ['tickets', academyId, 'todos'], queryFn: () => listTickets({ academyId }), enabled: Boolean(id) })
   const selected = tickets.data?.find((t) => t.id === id) ?? all.data?.find((t) => t.id === id)
 
-  const statusMutation = useMutationToast(({ ticketId, status }) => setTicketStatus(ticketId, status), {
-    success: (_, v) => (v.status === 'resolvido' ? 'Chamado marcado como resolvido' : 'Chamado reaberto'),
-    invalidate: [['tickets']],
-  })
+  // status muda na tela na hora; se o servidor recusar, a lista é recarregada
+  const statusMutation = useMutationToast(
+    async ({ ticketId, status }) => {
+      patchTicketInCache(queryClient, ticketId, { status })
+      try {
+        return await setTicketStatus(ticketId, status)
+      } catch (err) {
+        queryClient.invalidateQueries({ queryKey: ['tickets'] })
+        throw err
+      }
+    },
+    {
+      success: (_, v) => (v.status === 'resolvido' ? 'Chamado marcado como finalizado' : 'Chamado reaberto'),
+      invalidate: [['tickets']],
+    },
+  )
 
   if (tickets.isError) return <QueryError error={tickets.error} onRetry={tickets.refetch} />
 
@@ -133,7 +147,7 @@ export default function Suporte() {
                     </Button>
                   ) : (
                     <Button variant="outline" size="sm" icon={CheckCircle2} onClick={() => statusMutation.mutate({ ticketId: selected.id, status: 'resolvido' })}>
-                      Marcar como resolvido
+                      Finalizar chamado
                     </Button>
                   )
                 }

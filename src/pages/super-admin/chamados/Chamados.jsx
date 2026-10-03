@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, LifeBuoy, LogIn } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -9,6 +9,7 @@ import split from '../../../components/support/SupportSplit.module.css'
 import { Button, Card, Input, PageHeader, Select } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { useMutationToast } from '../../../hooks/useMutationToast'
+import { patchTicketInCache } from '../../../hooks/useSupportRealtime'
 import { useSuperRole } from '../../../hooks/useSuperRole'
 import { listTickets, setTicketStatus, TICKET_STATUS } from '../../../services/supportService'
 
@@ -16,12 +17,13 @@ const FILTERS = [
   { key: 'abertos', label: 'Em aberto' },
   { key: 'aberto', label: 'Aguardando suporte' },
   { key: 'respondido', label: 'Respondidos' },
-  { key: 'resolvido', label: 'Resolvidos' },
+  { key: 'resolvido', label: 'Finalizados' },
   { key: 'todos', label: 'Todos' },
 ]
 
 /** Central de chamados das academias (papéis Administrador e Suporte) */
 export default function Chamados() {
+  const queryClient = useQueryClient()
   const { id } = useParams()
   const navigate = useNavigate()
   const { setAcademy } = useTenant()
@@ -32,7 +34,7 @@ export default function Chamados() {
   const tickets = useQuery({
     queryKey: ['tickets', 'suporte', filtro],
     queryFn: () => listTickets({ status: filtro === 'todos' ? null : filtro }),
-    refetchInterval: 30000,
+    refetchInterval: 60000, // reserva: o normal é chegar pelo Realtime
   })
   const all = useQuery({ queryKey: ['tickets', 'suporte', 'todos'], queryFn: () => listTickets(), enabled: Boolean(id) })
   const selected = tickets.data?.find((t) => t.id === id) ?? all.data?.find((t) => t.id === id)
@@ -44,10 +46,22 @@ export default function Chamados() {
     return rows.filter((t) => `#${t.numero} ${t.assunto} ${t.academy?.nome ?? ''} ${t.aberto_por_nome ?? ''}`.toLowerCase().includes(term))
   }, [tickets.data, busca])
 
-  const statusMutation = useMutationToast(({ ticketId, status }) => setTicketStatus(ticketId, status), {
-    success: 'Status atualizado',
-    invalidate: [['tickets'], ['tickets-unread']],
-  })
+  // status muda na tela na hora; se o servidor recusar, a lista é recarregada
+  const statusMutation = useMutationToast(
+    async ({ ticketId, status }) => {
+      patchTicketInCache(queryClient, ticketId, { status })
+      try {
+        return await setTicketStatus(ticketId, status)
+      } catch (err) {
+        queryClient.invalidateQueries({ queryKey: ['tickets'] })
+        throw err
+      }
+    },
+    {
+      success: 'Status atualizado',
+      invalidate: [['tickets'], ['tickets-unread']],
+    },
+  )
 
   if (tickets.isError) return <QueryError error={tickets.error} onRetry={tickets.refetch} />
 

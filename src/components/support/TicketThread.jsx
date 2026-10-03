@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Headset, Send } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useAuth, useTenant } from '../../hooks/useAuth'
+import { patchTicketInCache, useTicketMessagesRealtime } from '../../hooks/useSupportRealtime'
 import { listMessages, markTicketRead, replyTicket, TICKET_STATUS } from '../../services/supportService'
 import { errorMessage } from '../../utils/errors'
 import { formatDateTime } from '../../utils/formatters'
@@ -26,14 +28,18 @@ export function TicketStatusBadge({ status }) {
 export default function TicketThread({ ticket, side, actions }) {
   const queryClient = useQueryClient()
   const toast = useToast()
+  const { context } = useAuth()
+  const { membership } = useTenant()
+  const myName = side === 'suporte' ? context?.super_admin?.nome : membership?.profile?.nome
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const endRef = useRef(null)
   const messages = useQuery({
     queryKey: ['ticket-messages', ticket.id],
     queryFn: () => listMessages(ticket.id),
-    refetchInterval: 20000,
+    refetchInterval: 60000, // reserva: o normal é chegar pelo Realtime
   })
+  useTicketMessagesRealtime(ticket.id)
 
   // ao abrir, marca como lido do meu lado
   const unread = side === 'suporte' ? !ticket.lido_suporte : !ticket.lido_academia
@@ -53,17 +59,29 @@ export default function TicketThread({ ticket, side, actions }) {
 
   const send = async (e) => {
     e.preventDefault()
-    if (!text.trim()) return
+    const body = text.trim()
+    if (!body || sending) return
+    const key = ['ticket-messages', ticket.id]
+    const tempId = `tmp-${Date.now()}`
+    // aparece na hora; o Realtime/consulta troca pela mensagem definitiva
+    queryClient.setQueryData(key, (old) => [
+      ...(old ?? []),
+      { id: tempId, pending: true, mensagem: body, do_suporte: side === 'suporte', autor_nome: myName, created_at: new Date().toISOString() },
+    ])
+    patchTicketInCache(queryClient, ticket.id, {
+      status: side === 'suporte' ? 'respondido' : 'aberto',
+      ultima_msg_em: new Date().toISOString(),
+    })
+    setText('')
     setSending(true)
     try {
-      await replyTicket(ticket.id, text)
-      setText('')
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['ticket-messages', ticket.id] }),
-        queryClient.invalidateQueries({ queryKey: ['tickets'] }),
-        queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] }),
-      ])
+      await replyTicket(ticket.id, body)
+      queryClient.invalidateQueries({ queryKey: key })
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
     } catch (err) {
+      queryClient.setQueryData(key, (old) => (old ?? []).filter((m) => m.id !== tempId))
+      setText(body)
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
       toast.error(errorMessage(err))
     } finally {
       setSending(false)
@@ -104,10 +122,10 @@ export default function TicketThread({ ticket, side, actions }) {
                 ) : (
                   <Avatar name={m.autor_nome} size={32} />
                 )}
-                <div className={styles.bubble}>
+                <div className={`${styles.bubble} ${m.pending ? styles.pending : ''}`}>
                   <div className={styles.meta}>
                     <strong>{m.do_suporte ? `${m.autor_nome} · Suporte` : m.autor_nome}</strong>
-                    <span>{formatDateTime(m.created_at)}</span>
+                    <span>{m.pending ? 'enviando…' : formatDateTime(m.created_at)}</span>
                   </div>
                   <p>{m.mensagem}</p>
                 </div>
@@ -134,7 +152,7 @@ export default function TicketThread({ ticket, side, actions }) {
           <span className="text-muted" style={{ fontSize: 12 }}>
             Ctrl + Enter para enviar
           </span>
-          <Button type="submit" icon={Send} loading={sending} disabled={!text.trim()}>
+          <Button type="submit" icon={Send} disabled={!text.trim()}>
             Enviar
           </Button>
         </div>

@@ -9,6 +9,7 @@ import { Badge, Button } from '../../../components/ui'
 import { useAuth, useTenant } from '../../../hooks/useAuth'
 import { useBrand } from '../../../hooks/useBrand'
 import { usePermissions } from '../../../hooks/usePermissions'
+import { useSupportRealtime } from '../../../hooks/useSupportRealtime'
 import { unreadTickets } from '../../../services/supportService'
 import { setPreferredArea } from '../../../routes/accessOptions'
 import styles from './AdminLayout.module.css'
@@ -19,6 +20,7 @@ export default function AdminLayout() {
   const { context } = useAuth()
   const { academy, academyId, membership, impersonating, setAcademy } = useTenant()
   const { canAny, roles } = usePermissions()
+  useSupportRealtime(Boolean(academyId) && !impersonating)
   // respostas do suporte ainda não lidas (contador no menu)
   const unreadSupport = useQuery({
     queryKey: ['tickets-unread', academyId],
