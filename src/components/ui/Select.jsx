@@ -2,7 +2,7 @@ import { Field, fieldStyles as styles, useFieldId } from './Field'
 
 /**
  * @param {object} props
- * @param {{ value: string|number, label: string }[]} props.options
+ * @param {{ value: string|number, label: string, disabled?: boolean }[]} props.options
  * @param {string} [props.placeholder] opção vazia
  */
 export default function Select({ label, error, hint, options = [], placeholder, required, id, className = '', ...rest }) {
@@ -18,7 +18,7 @@ export default function Select({ label, error, hint, options = [], placeholder, 
       >
         {placeholder !== undefined && <option value="">{placeholder}</option>}
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
+          <option key={opt.value} value={opt.value} disabled={opt.disabled}>
             {opt.label}
           </option>
         ))}

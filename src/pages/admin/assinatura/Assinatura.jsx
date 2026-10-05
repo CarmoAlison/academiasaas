@@ -5,7 +5,8 @@ import QueryError from '../../../components/feedback/QueryError'
 import ReceiptModal from '../../../components/receipt/ReceiptModal'
 import { Button, DataTable, PageHeader, StatCard, StatGrid, StatusBadge } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
-import { getAcademy, listSaasInvoices } from '../../../services/saasService'
+import PriceBreakdown from '../../../components/billing/PriceBreakdown'
+import { academyPrice, getAcademy, listSaasInvoices } from '../../../services/saasService'
 import { PAYMENT_METHODS } from '../../../utils/constants'
 import { formatCurrency, formatDate, paymentStatus } from '../../../utils/formatters'
 import styles from './Assinatura.module.css'
@@ -30,6 +31,7 @@ export default function Assinatura() {
     refetchOnWindowFocus: true, // baixa feita pelo Super Admin aparece ao voltar para a aba
   })
   const academy = useQuery({ queryKey: ['academy', academyId], queryFn: () => getAcademy(academyId) })
+  const price = useQuery({ queryKey: ['academy', academyId, 'price'], queryFn: () => academyPrice(academyId) })
 
   const rows = useMemo(() => (invoices.data ?? []).map((i) => ({ ...i, situacao: paymentStatus(i) })), [invoices.data])
   const proxima = rows.filter((i) => i.status === 'pendente').sort((a, b) => a.vencimento.localeCompare(b.vencimento))[0]
@@ -60,7 +62,7 @@ export default function Assinatura() {
           value={plano?.nome ?? '—'}
           icon={Package}
           loading={academy.isPending}
-          hint={plano ? `${formatCurrency(plano.valor)}/mês` : undefined}
+          hint={price.data ? `${formatCurrency(price.data.total)}/${price.data.meses === 12 ? 'ano' : 'mês'}` : undefined}
         />
         <StatCard
           label="Próximo vencimento"
@@ -79,6 +81,23 @@ export default function Assinatura() {
           hint={`${formatCurrency(pagas.reduce((a, i) => a + Number(i.valor), 0))} no total`}
         />
       </StatGrid>
+
+      {price.data && (
+        <section className={styles.planBox}>
+          <div>
+            <h2>
+              Plano {price.data.plano} · {price.data.meses === 12 ? 'anual' : 'mensal'}
+            </h2>
+            <p className="text-muted">
+              {price.data.adicionais.length
+                ? `Adicionais contratados: ${price.data.adicionais.map((a) => a.nome).join(', ')}`
+                : 'Nenhum adicional contratado.'}{' '}
+              Para mudar de plano, ciclo ou contratar adicionais, abra um chamado em Suporte.
+            </p>
+          </div>
+          <PriceBreakdown price={price.data} compact />
+        </section>
+      )}
 
       <DataTable
         loading={invoices.isPending}

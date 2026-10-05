@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Check, Pencil, Plus, Star, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import QueryError from '../../../components/feedback/QueryError'
 import {
   Badge,
@@ -11,55 +12,113 @@ import {
   Input,
   Modal,
   PageHeader,
+  Select,
+  SkeletonCard,
   Switch,
+  Tabs,
   Textarea,
   useConfirm,
 } from '../../../components/ui'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
-import { listSaasPlans, removeSaasPlan, saveSaasPlan } from '../../../services/saasService'
-import { formatCurrency } from '../../../utils/formatters'
+import {
+  listSaasAddons,
+  listSaasOffers,
+  listSaasPlans,
+  offerUsage,
+  removeSaasOffer,
+  removeSaasPlan,
+  saveSaasAddon,
+  saveSaasOffer,
+  saveSaasPlan,
+} from '../../../services/saasService'
+import { UFS } from '../../../utils/constants'
+import { formatCurrency, formatDate, toISODate } from '../../../utils/formatters'
+import { annualMonthly } from '../../../utils/saasPricing'
 import { rules } from '../../../utils/validators'
+import styles from './PlanosSaas.module.css'
 
-const EMPTY = { nome: '', descricao: '', valor: '', limite_alunos: '', ativo: true }
+const pctRule = (max) => (v) => (v !== '' && (Number(v) < 0 || Number(v) > max) ? `Entre 0 e ${max}` : undefined)
+
+// ---------------------------------------------------------------------
+// Planos
+// ---------------------------------------------------------------------
+const EMPTY_PLAN = {
+  nome: '',
+  descricao: '',
+  valor: '',
+  limite_alunos: '',
+  limite_unidades: '',
+  desconto_anual_pct: '15',
+  recursos: '',
+  destaque: false,
+  ordem: '0',
+  ativo: true,
+}
 
 function PlanModal({ plan, onClose }) {
   const { field, values, setValue, handleSubmit } = useForm(
-    plan ? { ...EMPTY, ...plan, descricao: plan.descricao ?? '', limite_alunos: plan.limite_alunos ?? '' } : EMPTY,
-    { nome: [rules.required()], valor: [rules.required(), rules.min(0)] },
+    plan
+      ? {
+          ...EMPTY_PLAN,
+          ...plan,
+          descricao: plan.descricao ?? '',
+          limite_alunos: plan.limite_alunos ?? '',
+          limite_unidades: plan.limite_unidades ?? '',
+          desconto_anual_pct: String(plan.desconto_anual_pct ?? 0),
+          recursos: (plan.recursos ?? []).join('\n'),
+          ordem: String(plan.ordem ?? 0),
+        }
+      : EMPTY_PLAN,
+    { nome: [rules.required()], valor: [rules.required(), rules.min(0)], desconto_anual_pct: [pctRule(90)] },
   )
   const mutation = useMutationToast((v) => saveSaasPlan(plan?.id, v), {
     success: plan ? 'Plano atualizado' : 'Plano criado',
     invalidate: [['saas-plans']],
     onSuccess: onClose,
   })
+  const submit = handleSubmit((v) => mutation.mutate(v))
+  const anual = values.valor ? annualMonthly({ valor: values.valor, desconto_anual_pct: values.desconto_anual_pct }) : null
 
   return (
     <Modal
       open
       onClose={onClose}
-      title={plan ? 'Editar plano SaaS' : 'Novo plano SaaS'}
+      size="lg"
+      title={plan ? 'Editar plano' : 'Novo plano'}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit((v) => mutation.mutate(v))} loading={mutation.isPending}>
+          <Button onClick={submit} loading={mutation.isPending}>
             Salvar
           </Button>
         </>
       }
     >
-      <form onSubmit={handleSubmit((v) => mutation.mutate(v))} noValidate>
+      <form onSubmit={submit} noValidate>
         <FormGrid columns={2}>
-          <FullRow>
-            <Input label="Nome" required {...field('nome')} />
-          </FullRow>
+          <Input label="Nome" required {...field('nome')} />
+          <Input label="Ordem de exibição" type="number" {...field('ordem')} />
           <Input label="Valor mensal (R$)" type="number" step="0.01" min="0" required {...field('valor')} />
-          <Input label="Limite de alunos" type="number" min="0" hint="Vazio = ilimitado" {...field('limite_alunos')} />
+          <Input
+            label="Desconto no anual (%)"
+            type="number"
+            min="0"
+            max="90"
+            hint={anual ? `No anual sai ${formatCurrency(anual)}/mês (${formatCurrency(anual * 12)}/ano)` : undefined}
+            {...field('desconto_anual_pct')}
+          />
+          <Input label="Limite de alunos ativos" type="number" min="0" hint="Vazio = ilimitado" {...field('limite_alunos')} />
+          <Input label="Limite de unidades" type="number" min="0" hint="Vazio = ilimitado" {...field('limite_unidades')} />
           <FullRow>
-            <Textarea label="Descrição" {...field('descricao')} />
+            <Input label="Descrição curta" {...field('descricao')} />
           </FullRow>
+          <FullRow>
+            <Textarea label="O que está incluso" rows={5} hint="Um item por linha (aparece no cartão do plano)" {...field('recursos')} />
+          </FullRow>
+          <Switch label="Destacar como “Mais vendido”" checked={values.destaque} onChange={(v) => setValue('destaque', v)} />
           <Switch label="Plano ativo (disponível para novas academias)" checked={values.ativo} onChange={(v) => setValue('ativo', v)} />
         </FormGrid>
       </form>
@@ -67,58 +126,370 @@ function PlanModal({ plan, onClose }) {
   )
 }
 
-export default function PlanosSaas() {
-  const [editing, setEditing] = useState(null) // null = fechado, {} = novo
+function PlansTab() {
+  const [editing, setEditing] = useState(null)
   const [confirm, confirmDialog] = useConfirm()
   const query = useQuery({ queryKey: ['saas-plans'], queryFn: listSaasPlans })
-  const removeMutation = useMutationToast(removeSaasPlan, { success: 'Plano removido', invalidate: [['saas-plans']] })
-
-  const onRemove = async (plan) => {
-    if (await confirm({ title: 'Remover plano', message: `Remover o plano ${plan.nome}? Academias já vinculadas mantêm o plano.`, danger: true, confirmLabel: 'Remover' })) {
-      removeMutation.mutate(plan.id)
-    }
-  }
+  const remove = useMutationToast(removeSaasPlan, { success: 'Plano removido', invalidate: [['saas-plans']] })
 
   if (query.isError) return <QueryError error={query.error} onRetry={query.refetch} />
 
   return (
     <>
-      <PageHeader
-        title="Planos SaaS"
-        subtitle="Planos que você vende para as academias"
-        actions={
-          <Button icon={Plus} onClick={() => setEditing({})}>
-            Novo plano
-          </Button>
-        }
-      />
       {confirmDialog}
+      <div className={styles.toolbar}>
+        <Button icon={Plus} onClick={() => setEditing({})}>
+          Novo plano
+        </Button>
+      </div>
+      {query.isPending ? (
+        <SkeletonCard lines={6} />
+      ) : (
+        <div className={styles.cards}>
+          {query.data.map((p) => (
+            <article key={p.id} className={`${styles.card} ${p.destaque ? styles.featured : ''} ${p.ativo ? '' : styles.inactive}`}>
+              {p.destaque && (
+                <span className={styles.ribbon}>
+                  <Star size={12} /> Mais vendido
+                </span>
+              )}
+              <header>
+                <h3>{p.nome}</h3>
+                {!p.ativo && <Badge>Inativo</Badge>}
+              </header>
+              {p.descricao && <p className="text-muted">{p.descricao}</p>}
+              <div className={styles.price}>
+                <strong>{formatCurrency(p.valor)}</strong>
+                <span>/mês</span>
+              </div>
+              {Number(p.desconto_anual_pct) > 0 && (
+                <p className={styles.annual}>
+                  Anual: {formatCurrency(annualMonthly(p))}/mês <Badge tone="success">−{Number(p.desconto_anual_pct)}%</Badge>
+                </p>
+              )}
+              <ul>
+                <li>
+                  <Check size={14} /> {p.limite_alunos ? `Até ${p.limite_alunos} alunos ativos` : 'Alunos ilimitados'}
+                </li>
+                <li>
+                  <Check size={14} /> {p.limite_unidades ? `${p.limite_unidades} unidade(s)` : 'Unidades ilimitadas'}
+                </li>
+                {(p.recursos ?? []).map((r) => (
+                  <li key={r}>
+                    <Check size={14} /> {r}
+                  </li>
+                ))}
+              </ul>
+              <footer>
+                <Button variant="outline" size="sm" icon={Pencil} onClick={() => setEditing(p)}>
+                  Editar
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={Trash2}
+                  aria-label="Remover"
+                  onClick={async () => {
+                    if (await confirm({ title: 'Remover plano', message: `Remover o plano ${p.nome}? Academias já vinculadas mantêm o plano.`, danger: true, confirmLabel: 'Remover' })) {
+                      remove.mutate(p.id)
+                    }
+                  }}
+                />
+              </footer>
+            </article>
+          ))}
+        </div>
+      )}
+      {editing && <PlanModal plan={editing.id ? editing : null} onClose={() => setEditing(null)} />}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------
+// Adicionais
+// ---------------------------------------------------------------------
+function AddonModal({ addon, onClose }) {
+  const { field, values, setValue, handleSubmit } = useForm(
+    { nome: addon?.nome ?? '', descricao: addon?.descricao ?? '', valor: addon?.valor ?? '', ativo: addon?.ativo ?? true, slug: addon?.slug ?? '' },
+    { nome: [rules.required()], valor: [rules.required(), rules.min(0)] },
+  )
+  const mutation = useMutationToast((v) => saveSaasAddon(addon?.id, v), {
+    success: addon ? 'Adicional atualizado' : 'Adicional criado',
+    invalidate: [['saas-addons']],
+    onSuccess: onClose,
+  })
+  const submit = handleSubmit((v) => mutation.mutate(v))
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={addon ? 'Editar adicional' : 'Novo adicional'}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} loading={mutation.isPending}>
+            Salvar
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={submit} noValidate>
+        <FormGrid columns={2}>
+          <Input label="Nome" required {...field('nome')} />
+          <Input label="Valor fixo mensal (R$)" type="number" step="0.01" min="0" required {...field('valor')} />
+          <FullRow>
+            <Textarea label="Descrição" rows={2} {...field('descricao')} />
+          </FullRow>
+          <Switch label="Disponível para contratação" checked={values.ativo} onChange={(v) => setValue('ativo', v)} />
+        </FormGrid>
+        <p className="text-muted" style={{ fontSize: 12, marginTop: 12 }}>
+          Mudar o valor vale para novas contratações; quem já contratou mantém o preço.
+        </p>
+      </form>
+    </Modal>
+  )
+}
+
+function AddonsTab() {
+  const [editing, setEditing] = useState(null)
+  const query = useQuery({ queryKey: ['saas-addons'], queryFn: listSaasAddons })
+  if (query.isError) return <QueryError error={query.error} onRetry={query.refetch} />
+  return (
+    <>
       <DataTable
         loading={query.isPending}
         data={query.data ?? []}
-        searchKeys={['nome', 'descricao']}
+        searchable={false}
+        actions={
+          <Button icon={Plus} onClick={() => setEditing({})}>
+            Novo adicional
+          </Button>
+        }
+        emptyTitle="Nenhum adicional"
         columns={[
-          { key: 'nome', header: 'Plano', render: (p) => <strong>{p.nome}</strong> },
-          { key: 'descricao', header: 'Descrição', render: (p) => p.descricao ?? '—' },
-          { key: 'valor', header: 'Valor/mês', align: 'right', render: (p) => formatCurrency(p.valor) },
-          { key: 'limite_alunos', header: 'Limite de alunos', align: 'right', render: (p) => p.limite_alunos ?? 'Ilimitado' },
-          { key: 'ativo', header: 'Status', render: (p) => <Badge tone={p.ativo ? 'success' : 'neutral'}>{p.ativo ? 'Ativo' : 'Inativo'}</Badge> },
+          {
+            key: 'nome',
+            header: 'Adicional',
+            render: (a) => (
+              <>
+                <strong>{a.nome}</strong>
+                {a.descricao && <div className="text-muted" style={{ fontSize: 12 }}>{a.descricao}</div>}
+              </>
+            ),
+          },
+          { key: 'valor', header: 'Valor fixo/mês', align: 'right', render: (a) => formatCurrency(a.valor) },
+          { key: 'ativo', header: 'Status', render: (a) => <Badge tone={a.ativo ? 'success' : 'neutral'}>{a.ativo ? 'Disponível' : 'Indisponível'}</Badge> },
           {
             key: 'acoes',
             header: '',
             sortable: false,
             align: 'right',
-            render: (p) => (
+            render: (a) => <Button variant="ghost" size="sm" icon={Pencil} aria-label="Editar" onClick={() => setEditing(a)} />,
+          },
+        ]}
+      />
+      <p className="text-muted" style={{ fontSize: 12, marginTop: 12 }}>
+        Os adicionais são ligados a cada academia na página dela (Academias → abrir → Assinatura). No plano anual, o adicional é cobrado × 12, sem desconto.
+      </p>
+      {editing && <AddonModal addon={editing.id ? editing : null} onClose={() => setEditing(null)} />}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------
+// Ofertas
+// ---------------------------------------------------------------------
+function OfferModal({ offer, onClose }) {
+  const { field, values, setValue, handleSubmit } = useForm(
+    {
+      nome: offer?.nome ?? '',
+      descricao: offer?.descricao ?? '',
+      desconto_pct: offer?.desconto_pct ?? '',
+      meses: offer?.meses ?? '',
+      limite_academias: offer?.limite_academias ?? '',
+      uf: offer?.uf ?? '',
+      cidade: offer?.cidade ?? '',
+      valido_ate: offer?.valido_ate ?? '',
+      ativo: offer?.ativo ?? true,
+    },
+    {
+      nome: [rules.required()],
+      desconto_pct: [rules.required(), (v) => (Number(v) <= 0 || Number(v) > 100 ? 'Entre 1 e 100' : undefined)],
+      meses: [(v) => (v !== '' && (Number(v) < 1 || Number(v) > 60) ? 'Entre 1 e 60' : undefined)],
+      limite_academias: [(v) => (v !== '' && Number(v) < 1 ? 'Mínimo 1' : undefined)],
+    },
+  )
+  const mutation = useMutationToast((v) => saveSaasOffer(offer?.id, v), {
+    success: offer ? 'Oferta atualizada' : 'Oferta criada',
+    invalidate: [['saas-offers']],
+    onSuccess: onClose,
+  })
+  const submit = handleSubmit((v) => mutation.mutate(v))
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      size="lg"
+      title={offer ? 'Editar oferta' : 'Nova oferta'}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} loading={mutation.isPending}>
+            Salvar
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={submit} noValidate>
+        <FormGrid columns={2}>
+          <FullRow>
+            <Input label="Nome" required placeholder="Ex.: Lançamento — 10 primeiras de Campinas" {...field('nome')} />
+          </FullRow>
+          <Input label="Desconto (%)" type="number" min="1" max="100" required hint="Aplicado sobre o plano (não nos adicionais)" {...field('desconto_pct')} />
+          <Input label="Duração do desconto (meses)" type="number" min="1" max="60" hint="Vazio = enquanto a assinatura durar" {...field('meses')} />
+          <Input label="Vagas (nº de academias)" type="number" min="1" hint="Vazio = sem limite" {...field('limite_academias')} />
+          <Input label="Válida para adesões até" type="date" hint="Vazio = sem data de término" {...field('valido_ate')} />
+          <Select label="Região — UF" placeholder="Todo o Brasil" options={UFS.map((u) => ({ value: u, label: u }))} {...field('uf')} />
+          <Input label="Região — cidade" placeholder="Opcional" {...field('cidade')} />
+          <FullRow>
+            <Textarea label="Observações" rows={2} {...field('descricao')} />
+          </FullRow>
+          <Switch label="Oferta ativa" checked={values.ativo} onChange={(v) => setValue('ativo', v)} />
+        </FormGrid>
+      </form>
+    </Modal>
+  )
+}
+
+function OffersTab() {
+  const [editing, setEditing] = useState(null)
+  const [confirm, confirmDialog] = useConfirm()
+  const query = useQuery({ queryKey: ['saas-offers'], queryFn: listSaasOffers })
+  const usage = useQuery({ queryKey: ['saas-offers', 'usage'], queryFn: offerUsage })
+  const remove = useMutationToast(removeSaasOffer, { success: 'Oferta excluída', invalidate: [['saas-offers']] })
+  if (query.isError) return <QueryError error={query.error} onRetry={query.refetch} />
+  const hoje = toISODate()
+
+  return (
+    <>
+      {confirmDialog}
+      <DataTable
+        loading={query.isPending}
+        data={query.data ?? []}
+        searchable={false}
+        actions={
+          <Button icon={Plus} onClick={() => setEditing({})}>
+            Nova oferta
+          </Button>
+        }
+        emptyTitle="Nenhuma oferta"
+        emptyDescription="Crie, por exemplo, “50% por 3 meses para as 10 primeiras academias de SP”."
+        columns={[
+          {
+            key: 'nome',
+            header: 'Oferta',
+            render: (o) => (
+              <>
+                <strong>{o.nome}</strong>
+                <div className="text-muted" style={{ fontSize: 12 }}>
+                  {Number(o.desconto_pct)}% {o.meses ? `por ${o.meses} mês(es)` : 'enquanto durar a assinatura'}
+                  {o.uf || o.cidade ? ` · ${[o.cidade, o.uf].filter(Boolean).join('/')}` : ' · todo o Brasil'}
+                </div>
+              </>
+            ),
+          },
+          {
+            key: 'vagas',
+            header: 'Vagas',
+            sortable: false,
+            render: (o) => {
+              const used = usage.data?.[o.id] ?? 0
+              return o.limite_academias ? (
+                <Badge tone={used >= o.limite_academias ? 'danger' : 'info'}>
+                  {used}/{o.limite_academias}
+                </Badge>
+              ) : (
+                `${used} academia(s)`
+              )
+            },
+          },
+          { key: 'valido_ate', header: 'Adesões até', render: (o) => (o.valido_ate ? formatDate(o.valido_ate) : '—') },
+          {
+            key: 'ativo',
+            header: 'Status',
+            render: (o) => {
+              const encerrada = o.valido_ate && o.valido_ate < hoje
+              const esgotada = o.limite_academias && (usage.data?.[o.id] ?? 0) >= o.limite_academias
+              if (!o.ativo) return <Badge>Inativa</Badge>
+              if (encerrada) return <Badge>Encerrada</Badge>
+              if (esgotada) return <Badge tone="warning">Esgotada</Badge>
+              return <Badge tone="success">Disponível</Badge>
+            },
+          },
+          {
+            key: 'acoes',
+            header: '',
+            sortable: false,
+            align: 'right',
+            render: (o) => (
               <div style={{ display: 'inline-flex', gap: 4 }}>
-                <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setEditing(p)} aria-label="Editar" />
-                <Button variant="ghost" size="sm" icon={Trash2} onClick={() => onRemove(p)} aria-label="Remover" />
+                <Button variant="ghost" size="sm" icon={Pencil} aria-label="Editar" onClick={() => setEditing(o)} />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={Trash2}
+                  aria-label="Excluir"
+                  onClick={async () => {
+                    const used = usage.data?.[o.id] ?? 0
+                    if (
+                      await confirm({
+                        title: 'Excluir oferta',
+                        message: used
+                          ? `${used} academia(s) usam esta oferta e perderão o desconto nas próximas faturas. Prefira desativar a oferta para só impedir novas adesões.`
+                          : `Excluir "${o.nome}"?`,
+                        danger: true,
+                        confirmLabel: 'Excluir',
+                      })
+                    ) {
+                      remove.mutate(o.id)
+                    }
+                  }}
+                />
               </div>
             ),
           },
         ]}
-        emptyTitle="Nenhum plano cadastrado"
       />
-      {editing && <PlanModal plan={editing.id ? editing : null} onClose={() => setEditing(null)} />}
+      <p className="text-muted" style={{ fontSize: 12, marginTop: 12 }}>
+        Desativar ou encerrar a oferta impede novas adesões; quem já aderiu mantém o desconto pelo período da oferta.
+      </p>
+      {editing && <OfferModal offer={editing.id ? editing : null} onClose={() => setEditing(null)} />}
+    </>
+  )
+}
+
+const TABS = [
+  { key: 'planos', label: 'Planos' },
+  { key: 'adicionais', label: 'Adicionais' },
+  { key: 'ofertas', label: 'Ofertas' },
+]
+
+export default function PlanosSaas() {
+  const [params, setParams] = useSearchParams()
+  const tab = TABS.some((t) => t.key === params.get('tab')) ? params.get('tab') : 'planos'
+  return (
+    <>
+      <PageHeader title="Planos SaaS" subtitle="Planos, adicionais e ofertas que você vende para as academias" />
+      <Tabs items={TABS} value={tab} onChange={(key) => setParams({ tab: key }, { replace: true })} />
+      <div style={{ marginTop: 20 }}>
+        {tab === 'planos' && <PlansTab />}
+        {tab === 'adicionais' && <AddonsTab />}
+        {tab === 'ofertas' && <OffersTab />}
+      </div>
     </>
   )
 }

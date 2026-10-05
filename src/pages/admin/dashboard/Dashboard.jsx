@@ -6,10 +6,11 @@ import { Button, Card, Grid, PageHeader, StatCard, StatGrid } from '../../../com
 import { useTenant } from '../../../hooks/useAuth'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { adminDashboard } from '../../../services/dashboardService'
+import { paymentsSummary } from '../../../services/paymentService'
 import { STUDENT_STATUS } from '../../../utils/constants'
 import PlanUsage from '../assinatura/PlanUsage'
 import Onboarding from './Onboarding'
-import { firstName, formatCurrency, formatMonth } from '../../../utils/formatters'
+import { firstName, formatCurrency, formatMonth, toISODate } from '../../../utils/formatters'
 
 const compactCurrency = (v) =>
   Number(v) >= 1000 ? `R$ ${(Number(v) / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil` : formatCurrency(v)
@@ -19,6 +20,19 @@ export default function Dashboard() {
   const { can } = usePermissions()
   const query = useQuery({ queryKey: ['admin-dashboard', academyId], queryFn: () => adminDashboard(academyId) })
   const d = query.data
+  // mesmo resumo do Financeiro (mês atual), para mostrar os dois critérios lado a lado
+  const now = new Date()
+  const summary = useQuery({
+    queryKey: ['payments', academyId, 'summary', toISODate(now).slice(0, 7)],
+    queryFn: () =>
+      paymentsSummary(
+        academyId,
+        toISODate(new Date(now.getFullYear(), now.getMonth(), 1)),
+        toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+      ),
+    enabled: can('financeiro.ver'),
+  })
+  const s = summary.data
 
   if (query.isError) return <QueryError error={query.error} onRetry={query.refetch} />
 
@@ -53,7 +67,13 @@ export default function Dashboard() {
           icon={AlertTriangle}
           tone="danger"
           loading={query.isPending}
-          hint={d ? `Atraso de mais de ${d.tolerancia} dia(s)` : undefined}
+          hint={
+            d
+              ? `Vencidos há mais de ${d.tolerancia} dia(s) (tolerância)${
+                  s?.alunos_em_atraso !== undefined ? ` · com parcela vencida (sem tolerância): ${s.alunos_em_atraso}` : ''
+                }`
+              : undefined
+          }
         />
         <StatCard
           label="Planos vencendo"
@@ -78,7 +98,13 @@ export default function Dashboard() {
           </>
         )}
         <StatCard label="Novos no mês" value={d?.novos_mes} icon={UserPlus} tone="success" loading={query.isPending} />
-        <StatCard label="Receita do mês" value={formatCurrency(d?.receita_mes)} icon={DollarSign} loading={query.isPending} hint="Pagamentos recebidos" />
+        <StatCard
+          label="Receita do mês"
+          value={formatCurrency(d?.receita_mes)}
+          icon={DollarSign}
+          loading={query.isPending}
+          hint={`Pela data do pagamento${s ? ` · das parcelas que vencem neste mês: ${formatCurrency(s.recebido)}` : ''}`}
+        />
       </StatGrid>
 
       <Grid min={420}>

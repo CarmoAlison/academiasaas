@@ -25,29 +25,31 @@ import { useTenant } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import {
+  academyPrice,
   academyStats,
   getAcademy,
   listAcademyAdmins,
   listSaasInvoices,
-  listSaasPlans,
   removeAcademy,
+  setAcademySubscription,
   updateAcademy,
 } from '../../../services/saasService'
-import { ACADEMY_STATUS } from '../../../utils/constants'
+import { ACADEMY_STATUS, UFS } from '../../../utils/constants'
 import { formatCNPJ, formatCPF, formatCurrency, formatDate, formatPhone, paymentStatus } from '../../../utils/formatters'
 import { rules } from '../../../utils/validators'
 import { useSuperRole } from '../../../hooks/useSuperRole'
+import SubscriptionFields from './SubscriptionFields'
 
 function EditForm({ academy }) {
   const canEdit = useSuperRole().superCan('academias')
-  const plans = useQuery({ queryKey: ['saas-plans'], queryFn: listSaasPlans })
   const { field, handleSubmit, reset } = useForm(
     {
       nome: academy.nome,
       cnpj: formatCNPJ(academy.cnpj ?? ''),
       email: academy.email ?? '',
       telefone: formatPhone(academy.telefone ?? ''),
-      saas_plan_id: academy.saas_plan_id ?? '',
+      uf: academy.uf ?? '',
+      cidade: academy.cidade ?? '',
       status: academy.status,
     },
     { nome: [rules.required()], cnpj: [rules.cnpj()], email: [rules.email()] },
@@ -59,7 +61,8 @@ function EditForm({ academy }) {
       cnpj: formatCNPJ(academy.cnpj ?? ''),
       email: academy.email ?? '',
       telefone: formatPhone(academy.telefone ?? ''),
-      saas_plan_id: academy.saas_plan_id ?? '',
+      uf: academy.uf ?? '',
+      cidade: academy.cidade ?? '',
       status: academy.status,
     })
   }, [academy, reset])
@@ -76,12 +79,8 @@ function EditForm({ academy }) {
         <Input label="CNPJ" {...field('cnpj', { mask: 'cnpj' })} />
         <Input label="E-mail" type="email" {...field('email')} />
         <Input label="Telefone" {...field('telefone', { mask: 'phone' })} />
-        <Select
-          label="Plano SaaS"
-          placeholder="Sem plano"
-          options={(plans.data ?? []).map((p) => ({ value: p.id, label: `${p.nome} — ${formatCurrency(p.valor)}` }))}
-          {...field('saas_plan_id')}
-        />
+        <Input label="Cidade" hint="Usada nas ofertas por região" {...field('cidade')} />
+        <Select label="UF" placeholder="—" options={UFS.map((u) => ({ value: u, label: u }))} {...field('uf')} />
         <Select label="Status" options={ACADEMY_STATUS} {...field('status')} />
       </FormGrid>
       {canEdit && (
@@ -97,6 +96,56 @@ function EditForm({ academy }) {
   )
 }
 
+const subscriptionOf = (a) => ({
+  plan: a.saas_plan_id ?? '',
+  ciclo: a.ciclo ?? 'mensal',
+  addons: (a.academy_addons ?? []).map((x) => x.addon_id),
+  offer: a.offer_id ?? null,
+})
+
+/** Plano, ciclo (mensal/anual), adicionais e oferta da academia */
+function SubscriptionCard({ academy }) {
+  const { superCan } = useSuperRole()
+  const canEdit = superCan('academias') || superCan('financeiro')
+  const [value, setValue] = useState(() => subscriptionOf(academy))
+  useEffect(() => setValue(subscriptionOf(academy)), [academy])
+
+  const mutation = useMutationToast(() => setAcademySubscription(academy.id, value), {
+    success: 'Assinatura atualizada. A fatura em aberto deste mês foi recalculada.',
+    invalidate: [['academy', academy.id], ['academies'], ['saas-invoices'], ['saas-offers'], ['super-dashboard']],
+  })
+  const changed = JSON.stringify(value) !== JSON.stringify(subscriptionOf(academy))
+
+  return (
+    <Card
+      title="Assinatura"
+      subtitle={
+        academy.ciclo_inicio
+          ? `Ciclo ${academy.ciclo} desde ${formatDate(academy.ciclo_inicio).slice(3)}${academy.oferta_ate ? ` · oferta até ${formatDate(academy.oferta_ate)}` : ''}`
+          : undefined
+      }
+    >
+      <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        <SubscriptionFields value={value} onChange={setValue} uf={academy.uf} cidade={academy.cidade} currentOfferId={academy.offer_id} ofertaAte={academy.oferta_ate} />
+      </fieldset>
+      {canEdit && (
+        <div style={{ marginTop: 20 }}>
+          <FormActions>
+            {changed && (
+              <Button variant="outline" onClick={() => setValue(subscriptionOf(academy))}>
+                Desfazer
+              </Button>
+            )}
+            <Button disabled={!changed || !value.plan} loading={mutation.isPending} onClick={() => mutation.mutate()}>
+              Salvar assinatura
+            </Button>
+          </FormActions>
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export default function AcademiaDetalhe() {
   const { superCan } = useSuperRole()
   const { id } = useParams()
@@ -109,6 +158,7 @@ export default function AcademiaDetalhe() {
   const stats = useQuery({ queryKey: ['academy-stats', id], queryFn: () => academyStats(id) })
   const admins = useQuery({ queryKey: ['academy-admins', id], queryFn: () => listAcademyAdmins(id) })
   const invoices = useQuery({ queryKey: ['saas-invoices', id], queryFn: () => listSaasInvoices({ academyId: id }) })
+  const price = useQuery({ queryKey: ['academy', id, 'price'], queryFn: () => academyPrice(id) })
 
   const removeMutation = useMutationToast(() => removeAcademy(id), {
     success: 'Academia excluída',
@@ -164,7 +214,7 @@ export default function AcademiaDetalhe() {
         <StatCard label="Alunos ativos" value={stats.data?.ativos} icon={Users} loading={stats.isPending} hint={`${stats.data?.alunos ?? 0} cadastrados`} />
         <StatCard label="Unidades" value={stats.data?.unidades} icon={MapPin} loading={stats.isPending} />
         <StatCard label="Planos" value={stats.data?.planos} icon={Package} loading={stats.isPending} />
-        <StatCard label="Plano SaaS" value={a.saas_plan?.nome ?? '—'} icon={Building2} tone="success" hint={a.saas_plan ? `${formatCurrency(a.saas_plan.valor)}/mês` : undefined} />
+        <StatCard label="Plano SaaS" value={a.saas_plan?.nome ?? '—'} icon={Building2} tone="success" hint={price.data ? `${formatCurrency(price.data.total)}/${price.data.meses === 12 ? 'ano' : 'mês'}` : undefined} />
       </StatGrid>
 
       <Grid min={460}>
@@ -189,6 +239,8 @@ export default function AcademiaDetalhe() {
         </Card>
       </Grid>
 
+      <SubscriptionCard academy={a} />
+
       <Card title="Faturas SaaS" padding={false}>
         <DataTable
           searchable={false}
@@ -198,7 +250,7 @@ export default function AcademiaDetalhe() {
           emptyTitle="Nenhuma fatura"
           columns={[
             { key: 'competencia', header: 'Competência', render: (i) => formatDate(i.competencia).slice(3) },
-            { key: 'saas_plan.nome', header: 'Plano', render: (i) => i.saas_plan?.nome ?? '—' },
+            { key: 'saas_plan.nome', header: 'Plano', render: (i) => `${i.saas_plan?.nome ?? '—'}${i.ciclo === 'anual' ? ' · anual' : ''}` },
             { key: 'valor', header: 'Valor', align: 'right', render: (i) => formatCurrency(i.valor) },
             { key: 'vencimento', header: 'Vencimento', render: (i) => formatDate(i.vencimento) },
             { key: 'status', header: 'Status', render: (i) => <StatusBadge status={paymentStatus(i)} /> },

@@ -260,8 +260,25 @@ export default function Financeiro() {
       />
 
       <StatGrid>
-        <StatCard label="Previsto no mês" value={formatCurrency(s?.previsto)} icon={DollarSign} loading={summary.isPending} />
-        <StatCard label="Recebido" value={formatCurrency(s?.recebido)} icon={CheckCircle2} tone="success" loading={summary.isPending} />
+        <StatCard
+          label="Previsto no mês"
+          value={formatCurrency(s?.previsto)}
+          icon={DollarSign}
+          loading={summary.isPending}
+          hint="Parcelas com vencimento neste mês"
+        />
+        <StatCard
+          label="Recebido (pelo vencimento)"
+          value={formatCurrency(s?.recebido)}
+          icon={CheckCircle2}
+          tone="success"
+          loading={summary.isPending}
+          hint={
+            s?.recebido_caixa !== undefined
+              ? `Parcelas deste mês já pagas · entrou no caixa no mês (data do pagamento): ${formatCurrency(s.recebido_caixa)}`
+              : 'Parcelas com vencimento neste mês já pagas'
+          }
+        />
         <StatCard
           label="A receber"
           value={formatCurrency(s?.a_receber)}
@@ -276,7 +293,11 @@ export default function Financeiro() {
           icon={AlertTriangle}
           tone="danger"
           loading={summary.isPending}
-          hint={`${s?.alunos_em_atraso ?? 0} aluno(s) com parcelas vencidas`}
+          hint={
+            s?.tolerancia !== undefined
+              ? `${s.alunos_em_atraso} aluno(s) com parcela vencida · ${s.alunos_inadimplentes} inadimplente(s) após ${s.tolerancia} dia(s) de tolerância`
+              : `${s?.alunos_em_atraso ?? 0} aluno(s) com parcelas vencidas (desde o 1º dia)`
+          }
         />
       </StatGrid>
 

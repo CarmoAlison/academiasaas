@@ -3,7 +3,8 @@ import { nowISO, supabase, unwrap } from './supabaseClient'
 
 // --- Academias ----------------------------------------------------------
 
-const ACADEMY_SELECT = 'id, nome, cnpj, email, telefone, logo_url, status, created_at, saas_plan_id, saas_plan:saas_plans(id, nome, valor)'
+const ACADEMY_SELECT =
+  'id, nome, cnpj, email, telefone, logo_url, status, created_at, saas_plan_id, ciclo, ciclo_inicio, uf, cidade, offer_id, oferta_ate, saas_plan:saas_plans(id, nome, valor, desconto_anual_pct), academy_addons(addon_id, valor, addon:saas_addons(id, nome, slug))'
 
 export const listAcademies = () =>
   unwrap(supabase.from('academies').select(ACADEMY_SELECT).is('deleted_at', null).order('created_at', { ascending: false }))
@@ -34,7 +35,8 @@ export const updateAcademy = (id, values) =>
         cnpj: onlyDigits(values.cnpj) || null,
         email: values.email || null,
         telefone: onlyDigits(values.telefone) || null,
-        saas_plan_id: values.saas_plan_id || null,
+        uf: values.uf || null,
+        cidade: values.cidade?.trim() || null,
         status: values.status,
       })
       .eq('id', id),
@@ -83,7 +85,7 @@ export const listAcademyAdmins = async (academyId) => {
 // --- Planos SaaS -------------------------------------------------------
 
 export const listSaasPlans = () =>
-  unwrap(supabase.from('saas_plans').select('*').is('deleted_at', null).order('valor'))
+  unwrap(supabase.from('saas_plans').select('*').is('deleted_at', null).order('ordem').order('valor'))
 
 export const saveSaasPlan = (id, values) => {
   const payload = {
@@ -91,6 +93,14 @@ export const saveSaasPlan = (id, values) => {
     descricao: values.descricao || null,
     valor: Number(values.valor),
     limite_alunos: values.limite_alunos ? Number(values.limite_alunos) : null,
+    limite_unidades: values.limite_unidades ? Number(values.limite_unidades) : null,
+    desconto_anual_pct: Number(values.desconto_anual_pct || 0),
+    recursos: String(values.recursos ?? '')
+      .split('\n')
+      .map((r) => r.trim())
+      .filter(Boolean),
+    destaque: Boolean(values.destaque),
+    ordem: Number(values.ordem || 0),
     ativo: values.ativo,
   }
   return unwrap(id ? supabase.from('saas_plans').update(payload).eq('id', id) : supabase.from('saas_plans').insert(payload))
@@ -167,4 +177,79 @@ export async function saveSettings(dados) {
   return unwrap(
     supabase.from('saas_settings').upsert({ id: 1, dados: { ...current, ...rest, recibo: current.recibo }, updated_at: nowISO() }),
   )
+}
+
+// --- Adicionais e ofertas ---------------------------------------------------
+
+export const listSaasAddons = () => unwrap(supabase.from('saas_addons').select('*').order('nome'))
+
+export const saveSaasAddon = (id, v) => {
+  const payload = {
+    nome: v.nome.trim(),
+    slug:
+      v.slug?.trim() ||
+      v.nome
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_|_$/g, ''),
+    descricao: v.descricao?.trim() || null,
+    valor: Number(v.valor),
+    ativo: Boolean(v.ativo),
+  }
+  return unwrap(id ? supabase.from('saas_addons').update(payload).eq('id', id) : supabase.from('saas_addons').insert(payload))
+}
+
+export const listSaasOffers = () => unwrap(supabase.from('saas_offers').select('*').order('created_at', { ascending: false }))
+
+export const saveSaasOffer = (id, v) => {
+  const payload = {
+    nome: v.nome.trim(),
+    descricao: v.descricao?.trim() || null,
+    desconto_pct: Number(v.desconto_pct),
+    meses: v.meses ? Number(v.meses) : null,
+    limite_academias: v.limite_academias ? Number(v.limite_academias) : null,
+    uf: v.uf || null,
+    cidade: v.cidade?.trim() || null,
+    valido_ate: v.valido_ate || null,
+    ativo: Boolean(v.ativo),
+  }
+  return unwrap(id ? supabase.from('saas_offers').update(payload).eq('id', id) : supabase.from('saas_offers').insert(payload))
+}
+
+export const removeSaasOffer = (id) => unwrap(supabase.from('saas_offers').delete().eq('id', id))
+
+/** Quantas academias usam cada oferta → { [offer_id]: n } */
+export async function offerUsage() {
+  const rows = await unwrap(supabase.from('academies').select('offer_id').not('offer_id', 'is', null).is('deleted_at', null))
+  return rows.reduce((acc, r) => ({ ...acc, [r.offer_id]: (acc[r.offer_id] ?? 0) + 1 }), {})
+}
+
+/** Plano, ciclo, adicionais e oferta da academia (recalcula a fatura pendente do mês) */
+export const setAcademySubscription = (academyId, { plan, ciclo, addons = [], offer = null }) =>
+  unwrap(
+    supabase.rpc('set_academy_subscription', {
+      p_academy: academyId,
+      p_plan: plan,
+      p_ciclo: ciclo,
+      p_addons: addons,
+      p_offer: offer || null,
+    }),
+  )
+
+/** Composição do preço atual (Super Admin ou Admin da academia) */
+export const academyPrice = (academyId) => unwrap(supabase.rpc('academy_price', { p_academy: academyId }))
+
+/** Cria a academia e já aplica região, ciclo, adicionais e oferta */
+export async function createAcademyWithSubscription(values, subscription) {
+  const id = await createAcademy({ ...values, saas_plan_id: subscription.plan })
+  if (values.uf || values.cidade) {
+    await unwrap(supabase.from('academies').update({ uf: values.uf || null, cidade: values.cidade?.trim() || null }).eq('id', id))
+  }
+  if (subscription.ciclo !== 'mensal' || subscription.addons.length || subscription.offer) {
+    await setAcademySubscription(id, subscription)
+  }
+  return id
 }

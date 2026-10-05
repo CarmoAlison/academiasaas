@@ -88,7 +88,7 @@ export default function AcademiasList() {
         columns={[
           { key: 'nome', header: 'Academia', render: (a) => <strong>{a.nome}</strong> },
           { key: 'cnpj', header: 'CNPJ', render: (a) => (a.cnpj ? formatCNPJ(a.cnpj) : '—') },
-          { key: 'saas_plan.nome', header: 'Plano', render: (a) => a.saas_plan?.nome ?? '—' },
+          { key: 'saas_plan.nome', header: 'Plano', render: (a) => `${a.saas_plan?.nome ?? '—'}${a.ciclo === 'anual' ? ' · anual' : ''}` },
           { key: 'status', header: 'Status', render: (a) => <StatusBadge status={a.status} /> },
           { key: 'created_at', header: 'Cadastro', render: (a) => formatDate(a.created_at) },
           {

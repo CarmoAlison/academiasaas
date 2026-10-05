@@ -189,7 +189,7 @@ export default function Financeiro() {
         emptyDescription='Use "Gerar faturas do mês" para criar as cobranças das academias ativas.'
         columns={[
           { key: 'academy.nome', header: 'Academia', render: (i) => <strong>{i.academy?.nome}</strong> },
-          { key: 'saas_plan.nome', header: 'Plano', render: (i) => i.saas_plan?.nome ?? '—' },
+          { key: 'saas_plan.nome', header: 'Plano', render: (i) => `${i.saas_plan?.nome ?? '—'}${i.ciclo === 'anual' ? ' · anual' : ''}` },
           { key: 'valor', header: 'Valor', align: 'right', sortValue: (i) => Number(i.valor), render: (i) => formatCurrency(i.valor) },
           { key: 'vencimento', header: 'Vencimento', render: (i) => formatDate(i.vencimento) },
           { key: 'situacao', header: 'Status', render: (i) => <StatusBadge status={i.situacao} /> },
