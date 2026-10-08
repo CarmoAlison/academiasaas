@@ -24,3 +24,17 @@
   color: var(--color-warning-text);
   font-size: var(--fs-14);
 }
+
+/* com logo: no computador ela já está no menu; no celular aparece aqui no topo */
+.topLogo {
+  display: none;
+  max-width: 160px;
+  max-height: 30px;
+  object-fit: contain;
+}
+
+@media (max-width: 1024px) {
+  .topLogo {
+    display: block;
+  }
+}

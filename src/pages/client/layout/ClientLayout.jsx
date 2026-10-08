@@ -35,10 +35,17 @@ export default function ClientLayout() {
       <header className={styles.topbar}>
         <div className={styles.inner}>
           <div className={styles.brand}>
-            <span className={styles.logo}>
-              {brand.logo ? <img src={brand.logo} alt="" /> : <Dumbbell size={18} />}
-            </span>
-            <strong>{academy?.nome}</strong>
+            {brand.logo ? (
+              // com logo: só a logo (sem nome e ícone)
+              <img className={styles.wordmark} src={brand.logo} alt={academy?.nome ?? ''} />
+            ) : (
+              <>
+                <span className={styles.logo}>
+                  <Dumbbell size={18} />
+                </span>
+                <strong>{academy?.nome}</strong>
+              </>
+            )}
           </div>
           <nav className={styles.desktopNav} aria-label="Navegação">
             {NAV.map(({ to, label }) => (

@@ -1,0 +1,61 @@
+.slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: var(--space-4);
+}
+
+.slot {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.slotTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-14);
+  font-weight: var(--fw-medium);
+}
+
+/* fundo fixo de cada modo, para ver a logo como vai ficar */
+.preview {
+  display: grid;
+  place-items: center;
+  height: 88px;
+  padding: var(--space-3);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.light {
+  background: #ffffff;
+  color: #9ca3af;
+}
+
+.dark {
+  background: #121a23;
+  color: #64748b;
+}
+
+.preview img {
+  max-width: 100%;
+  max-height: 60px;
+  object-fit: contain;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.hint {
+  margin-top: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--fs-12);
+}
+
+.root {
+  width: 100%;
+}

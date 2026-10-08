@@ -23,6 +23,7 @@ export const ACADEMY_DEFAULTS = {
   // Identidade visual
   cor_primaria: null,
   logo_url: null,
+  logo_url_dark: null,
   // Contrato
   contrato_titulo: null,
   contrato_texto: null,

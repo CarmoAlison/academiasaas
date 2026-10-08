@@ -27,17 +27,24 @@ export default function Sidebar({ brand, groups, collapsed, onToggleCollapse, mo
         className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileOpen : ''}`}
         aria-label="Menu principal"
       >
-        <div className={styles.brand}>
-          <span className={styles.logo}>
-            {brand.logo ? <img src={brand.logo} alt="" /> : <Dumbbell size={20} />}
-          </span>
-          {!collapsed && (
-            <span className={styles.brandText}>
-              <strong>{brand.title}</strong>
-              {brand.subtitle && <small>{brand.subtitle}</small>}
+        {brand.logo ? (
+          // com logo: só a logo (sem nome e ícone)
+          <div className={`${styles.brand} ${styles.brandLogo}`}>
+            <img src={brand.logo} alt={brand.title} title={brand.title} />
+          </div>
+        ) : (
+          <div className={styles.brand}>
+            <span className={styles.logo}>
+              <Dumbbell size={20} />
             </span>
-          )}
-        </div>
+            {!collapsed && (
+              <span className={styles.brandText}>
+                <strong>{brand.title}</strong>
+                {brand.subtitle && <small>{brand.subtitle}</small>}
+              </span>
+            )}
+          </div>
+        )}
 
         <nav className={styles.nav}>
           {groups.map((group, gi) => (

@@ -7,7 +7,7 @@ import { useTheme } from './useTheme'
 /**
  * Identidade visual da academia ativa: aplica a cor escolhida pelo Admin no sistema
  * (sobrescreve as variáveis de cor primária) e devolve o logo. Usar nos layouts.
- * @returns {{ logo: string|null, cor: string|null }}
+ * @returns {{ logo: string|null, cor: string|null }} logo = do modo claro ou escuro, conforme o tema
  */
 export function useBrand() {
   const { academy } = useTenant()
@@ -29,5 +29,9 @@ export function useBrand() {
     }
   }, [cor, resolved])
 
-  return { logo: settings?.logo_url || academy?.logo_url || null, cor }
+  // logo do tema atual; se só uma foi enviada, vale para os dois modos
+  const light = settings?.logo_url || academy?.logo_url || null
+  const dark = settings?.logo_url_dark || null
+  const logo = resolved === 'dark' ? dark || light : light || dark
+  return { logo, cor }
 }

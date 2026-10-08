@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
 import QueryError from '../../../components/feedback/QueryError'
+import LogoPicker from '../../../components/brand/LogoPicker'
 import ProfileCard from '../../../components/profile/ProfileCard'
 import { Button, Card, FormActions, FormGrid, FormSection, FullRow, Input, PageHeader, Select, Switch, useConfirm } from '../../../components/ui'
 import { useAuth } from '../../../hooks/useAuth'
@@ -22,6 +23,9 @@ const DEFAULTS = {
   estado: '',
   cep: '',
   dias_vencimento: 10,
+  // logos do painel (menu do Super Admin)
+  logo_claro: '',
+  logo_escuro: '',
   smtp_host: '',
   smtp_porta: '',
   smtp_usuario: '',
@@ -89,6 +93,18 @@ function SettingsForm({ initial }) {
           <Input label="Telefone de suporte" {...field('telefone', { mask: 'phone' })} />
           <Input label="Dias para vencimento da fatura" type="number" min="1" {...field('dias_vencimento')} />
         </FormGrid>
+      </FormSection>
+
+      <FormSection title="Logo do painel" description="Aparece no menu do Super Admin no lugar do nome “Academia SaaS”.">
+        <LogoPicker
+          folder="saas"
+          light={values.logo_claro}
+          dark={values.logo_escuro}
+          onChange={({ light, dark }) => {
+            setValue('logo_claro', light)
+            setValue('logo_escuro', dark)
+          }}
+        />
       </FormSection>
 
       <FormSection title="Endereço da empresa">

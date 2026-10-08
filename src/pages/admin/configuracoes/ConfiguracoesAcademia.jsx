@@ -1,17 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
-import { Copy, ImageIcon, RotateCcw, Save, Upload, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Copy, RotateCcw, Save } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
+import LogoPicker from '../../../components/brand/LogoPicker'
 import QueryError from '../../../components/feedback/QueryError'
-import { Button, Card, FormActions, FormGrid, FormSection, FullRow, Input, PageHeader, Switch, Textarea, useToast } from '../../../components/ui'
+import { Button, Card, FormActions, FormGrid, FormSection, FullRow, Input, PageHeader, Switch, Textarea } from '../../../components/ui'
 import { useAuth, useTenant } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { getAcademySettings, saveAcademySettings } from '../../../services/academySettingsService'
 import { CONTRACT_VARIABLES, defaultContractText } from '../../../services/contractService'
-import { uploadReceiptImage } from '../../../services/receiptService'
 import { isHexColor, readableOn, tint } from '../../../utils/color'
-import { errorMessage } from '../../../utils/errors'
 import { rules } from '../../../utils/validators'
 import { DEFAULT_TEMPLATES, TEMPLATE_KEYS, TEMPLATE_VARIABLES } from '../../../utils/whatsapp'
 import styles from './Configuracoes.module.css'
@@ -51,16 +50,13 @@ function SettingsForm({ initial }) {
   useEffect(() => reset(formInitial), [formInitial, reset])
 
   const { refresh } = useAuth()
-  const toast = useToast()
-  const logoRef = useRef(null)
-  const [uploading, setUploading] = useState(false)
   const defaultText = useQuery({ queryKey: ['default-contract'], queryFn: defaultContractText, staleTime: Infinity })
 
   const mutation = useMutationToast(
     (v) => {
       const payload = { ...v }
       for (const k of NUMBER_FIELDS) payload[k] = v[k] === '' ? null : Number(v[k])
-      for (const k of [...Object.values(TEMPLATE_KEYS), 'contrato_titulo', 'contrato_texto', 'logo_url']) payload[k] = v[k]?.trim() || null
+      for (const k of [...Object.values(TEMPLATE_KEYS), 'contrato_titulo', 'contrato_texto', 'logo_url', 'logo_url_dark']) payload[k] = v[k]?.trim() || null
       payload.cor_primaria = isHexColor(v.cor_primaria) ? v.cor_primaria.toUpperCase() : null
       return saveAcademySettings(academyId, payload)
     },
@@ -72,19 +68,6 @@ function SettingsForm({ initial }) {
     },
   )
 
-  const onLogo = async (e) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setUploading(true)
-    try {
-      setValue('logo_url', await uploadReceiptImage(academyId, file, 'logo'))
-    } catch (err) {
-      toast.error(errorMessage(err))
-    } finally {
-      setUploading(false)
-    }
-  }
   const cor = isHexColor(values.cor_primaria) ? values.cor_primaria : DEFAULT_COLOR
 
   return (
@@ -94,23 +77,15 @@ function SettingsForm({ initial }) {
         description="Logo e cor da academia aplicados no sistema da equipe e na área do aluno (claro e escuro)."
       >
         <div className={styles.identity}>
-          <div className={styles.logoBox}>
-            {values.logo_url ? <img src={values.logo_url} alt="Logo da academia" /> : <ImageIcon size={28} />}
-          </div>
-          <div className={styles.identityActions}>
-            <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={onLogo} />
-            <Button type="button" variant="outline" size="sm" icon={Upload} loading={uploading} onClick={() => logoRef.current?.click()}>
-              {values.logo_url ? 'Trocar logo' : 'Enviar logo'}
-            </Button>
-            {values.logo_url && (
-              <Button type="button" variant="ghost" size="sm" icon={X} onClick={() => setValue('logo_url', '')}>
-                Remover
-              </Button>
-            )}
-            <span className="text-muted" style={{ fontSize: 12 }}>
-              PNG, JPG ou WEBP de até 2 MB, quadrado e de preferência com fundo transparente.
-            </span>
-          </div>
+          <LogoPicker
+            folder={academyId}
+            light={values.logo_url}
+            dark={values.logo_url_dark}
+            onChange={({ light, dark }) => {
+              setValue('logo_url', light)
+              setValue('logo_url_dark', dark)
+            }}
+          />
         </div>
         <div className={styles.colorRow}>
           <label className={styles.colorPicker}>

@@ -48,7 +48,11 @@ export default function AdminLayout() {
       groups={visibleNav(canAny, { impersonating, badges: { suporte: unreadSupport.data || null } })}
       topbarLeft={
         <div className={styles.topLeft}>
-          <strong className={styles.academy}>{academy?.nome}</strong>
+          {brand.logo ? (
+            <img className={styles.topLogo} src={brand.logo} alt={academy?.nome ?? ''} />
+          ) : (
+            <strong className={styles.academy}>{academy?.nome}</strong>
+          )}
           {impersonating && <Badge tone="warning">Modo super admin</Badge>}
         </div>
       }

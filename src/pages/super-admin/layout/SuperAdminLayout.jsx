@@ -7,6 +7,8 @@ import UserMenu from '../../../components/shell/UserMenu'
 import { useAuth } from '../../../hooks/useAuth'
 import { useSuperRole } from '../../../hooks/useSuperRole'
 import { useSupportRealtime } from '../../../hooks/useSupportRealtime'
+import { useTheme } from '../../../hooks/useTheme'
+import { getSettings } from '../../../services/saasService'
 import { unreadTickets } from '../../../services/supportService'
 
 /** `area`: permissão do papel necessária (ver useSuperRole); sem área = todos */
@@ -48,6 +50,12 @@ export default function SuperAdminLayout() {
   const { context } = useAuth()
   const { superCan, label } = useSuperRole()
   const admin = context?.super_admin
+  // logo do painel (Configurações), conforme o tema; se só uma foi enviada, vale para os dois
+  const { resolved } = useTheme()
+  const settings = useQuery({ queryKey: ['saas-settings'], queryFn: getSettings, staleTime: 5 * 60000 })
+  const logoClaro = settings.data?.logo_claro || null
+  const logoEscuro = settings.data?.logo_escuro || null
+  const logo = resolved === 'dark' ? logoEscuro || logoClaro : logoClaro || logoEscuro
 
   useSupportRealtime(superCan('suporte'))
   const unread = useQuery({
@@ -65,7 +73,7 @@ export default function SuperAdminLayout() {
 
   return (
     <AppShell
-      brand={{ title: 'Academia SaaS', subtitle: 'Super Admin' }}
+      brand={{ title: settings.data?.nome || 'Academia SaaS', subtitle: 'Super Admin', logo }}
       groups={groups}
       showTopbar={false}
       topbarRight={

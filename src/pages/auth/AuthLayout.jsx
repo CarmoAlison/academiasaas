@@ -1,4 +1,4 @@
-import { CalendarCheck, Dumbbell, ShieldCheck, Users } from 'lucide-react'
+import { CalendarCheck, ShieldCheck, Users } from 'lucide-react'
 import ThemeToggle from '../../components/shell/ThemeToggle'
 import styles from './AuthLayout.module.css'
 import LogoBranco from '../../assets/LOGO-BRANCA-ACADEMIA.png'

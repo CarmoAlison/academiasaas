@@ -111,3 +111,11 @@
     padding: var(--space-6) var(--space-4);
   }
 }
+
+/* logo da academia no lugar do nome */
+.wordmark {
+  display: block;
+  max-width: min(180px, 100%);
+  max-height: 34px;
+  object-fit: contain;
+}
