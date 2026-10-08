@@ -110,8 +110,12 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-10);
+  margin-bottom: 10px;
   font-size: var(--fs-16);
+}
+
+.brand img{
+  width: 250px;
 }
 
 .logo {

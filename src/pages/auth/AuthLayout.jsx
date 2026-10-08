@@ -1,6 +1,7 @@
 import { CalendarCheck, Dumbbell, ShieldCheck, Users } from 'lucide-react'
 import ThemeToggle from '../../components/shell/ThemeToggle'
 import styles from './AuthLayout.module.css'
+import LogoBranco from '../../assets/LOGO-BRANCA-ACADEMIA.png'
 
 /** Ondas decorativas (estáticas, sem animação) na base da foto */
 function Waves() {
@@ -36,11 +37,10 @@ export default function AuthLayout({ title, subtitle, children }) {
       <div className={styles.content}>
         <section className={styles.pitch}>
           <div className={styles.brand}>
-            <span className={styles.logo}>
-              <Dumbbell size={22} />
-            </span>
-            <strong>Academia SaaS</strong>
+            <img src={LogoBranco} alt="" />
           </div>
+          <hr />
+          <br />
           <h2>Gestão completa para academias</h2>
           <p>Alunos, treinos, aulas e financeiro em um só lugar — com acesso seguro por CPF.</p>
           <ul>
