@@ -8,6 +8,15 @@ export const ACADEMY_DEFAULTS = {
   // Financeiro
   dias_tolerancia: 5,
   bloquear_reservas_inadimplente: true,
+  // Cobrança (multa até 2%, juros até 1% ao mês) e PIX
+  multa_percent: 0,
+  juros_mes_percent: 0,
+  pix_tipo: null,
+  pix_chave: null,
+  pix_favorecido: null,
+  // Horário de funcionamento: 7 dias (0 = domingo) { aberto, abre, fecha }; null = não informado
+  horarios: null,
+  checkin_somente_aberto: false,
   // Aulas
   aulas_lista_espera: true,
   aulas_cancelamento_horas: 2,
@@ -20,6 +29,7 @@ export const ACADEMY_DEFAULTS = {
   msg_atraso: null,
   msg_recibo: null,
   msg_sumido: null,
+  msg_aniversario: null,
   // Identidade visual
   cor_primaria: null,
   logo_url: null,
@@ -51,3 +61,17 @@ export function updateAcademySettings(academyId, partial) {
 
 /** Checklist do primeiro acesso (somente Admin) */
 export const onboardingStatus = (academyId) => unwrap(supabase.rpc('onboarding_status', { p_academy: academyId }))
+
+/** Contato e endereço da academia (somente Admin). Nome, CNPJ e plano são alterados pelo SaaS. */
+export const updateMyAcademy = (academyId, dados) =>
+  unwrap(supabase.rpc('update_my_academy', { p_academy: academyId, p_dados: dados }))
+
+/** Dados cadastrais da academia (tela de Configurações → Dados e endereço) */
+export const getMyAcademyData = (academyId) =>
+  unwrap(
+    supabase
+      .from('academies')
+      .select('id, nome, cnpj, email, telefone, cep, endereco, bairro, cidade, uf, instagram, site')
+      .eq('id', academyId)
+      .single(),
+  )

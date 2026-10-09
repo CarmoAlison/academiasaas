@@ -10,6 +10,7 @@ import Spinner from './Spinner'
  * @param {boolean} [props.block]
  * @param {import('react').ComponentType<any>} [props.icon] ícone Lucide
  * @param {string} [props.to] renderiza como Link
+ * @param {string} [props.href] link externo (renderiza como <a>)
  */
 export default function Button({
   variant = 'primary',
@@ -18,6 +19,7 @@ export default function Button({
   block = false,
   icon: Icon,
   to,
+  href,
   children,
   className = '',
   disabled,
@@ -39,6 +41,14 @@ export default function Button({
       {children && <span>{children}</span>}
     </>
   )
+
+  if (href) {
+    return (
+      <a href={href} className={classes} {...rest}>
+        {content}
+      </a>
+    )
+  }
 
   if (to) {
     return (

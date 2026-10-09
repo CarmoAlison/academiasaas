@@ -35,9 +35,9 @@ export function listTickets({ academyId, status } = {}) {
 export const getTicket = (id) => unwrap(supabase.from('support_tickets').select(FIELDS).eq('id', id).single())
 
 export const listMessages = (ticketId) =>
-  unwrap(supabase.from('support_messages').select('id, autor_nome, do_suporte, mensagem, created_at').eq('ticket_id', ticketId).order('created_at'))
+  unwrap(supabase.from('support_messages').select('id, autor_nome, do_suporte, mensagem, anexos, created_at').eq('ticket_id', ticketId).order('created_at'))
 
-export const openTicket = (academyId, { assunto, categoria, prioridade, mensagem }) =>
+export const openTicket = (academyId, { assunto, categoria, prioridade, mensagem, anexos = [] }) =>
   unwrap(
     supabase.rpc('open_ticket', {
       p_academy: academyId,
@@ -45,10 +45,12 @@ export const openTicket = (academyId, { assunto, categoria, prioridade, mensagem
       p_categoria: categoria,
       p_mensagem: mensagem,
       p_prioridade: prioridade,
+      p_anexos: anexos,
     }),
   )
 
-export const replyTicket = (ticketId, mensagem) => unwrap(supabase.rpc('reply_ticket', { p_ticket: ticketId, p_mensagem: mensagem }))
+export const replyTicket = (ticketId, mensagem, anexos = []) =>
+  unwrap(supabase.rpc('reply_ticket', { p_ticket: ticketId, p_mensagem: mensagem, p_anexos: anexos }))
 
 export const setTicketStatus = (ticketId, status) => unwrap(supabase.rpc('set_ticket_status', { p_ticket: ticketId, p_status: status }))
 
@@ -62,3 +64,42 @@ export async function unreadTickets({ academyId, suporte }) {
   if (error) throw error
   return count ?? 0
 }
+
+// --- Anexos (bucket privado support-files/{academia}/...) ---------------------
+
+export const ATTACHMENT_MAX_MB = 10
+const ATTACHMENT_TYPES = /^(image\/(png|jpe?g|webp|gif)|application\/pdf|text\/plain)$/
+
+/** Envia um anexo e devolve { path, nome, tipo, tamanho } */
+export async function uploadAttachment(academyId, file) {
+  if (!ATTACHMENT_TYPES.test(file.type)) throw new Error('Anexe imagens (PNG, JPG, WEBP, GIF), PDF ou TXT')
+  if (file.size > ATTACHMENT_MAX_MB * 1024 * 1024) throw new Error(`Cada anexo pode ter até ${ATTACHMENT_MAX_MB} MB`)
+  const safe = file.name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^\w.-]+/g, '_')
+    .slice(-80)
+  const path = `${academyId}/${crypto.randomUUID()}/${safe}`
+  await unwrap(supabase.storage.from('support-files').upload(path, file, { contentType: file.type }))
+  return { path, nome: file.name, tipo: file.type, tamanho: file.size }
+}
+
+/** Link temporário (10 min) para abrir um anexo */
+export async function attachmentUrl(path) {
+  const { data, error } = await supabase.storage.from('support-files').createSignedUrl(path, 600)
+  if (error) throw error
+  return data.signedUrl
+}
+
+// --- Respostas prontas (suporte do SaaS) -------------------------------------
+
+export const listMacros = () => unwrap(supabase.from('support_macros').select('*').order('titulo'))
+
+export const saveMacro = (id, { titulo, texto }) =>
+  unwrap(
+    id
+      ? supabase.from('support_macros').update({ titulo: titulo.trim(), texto: texto.trim() }).eq('id', id)
+      : supabase.from('support_macros').insert({ titulo: titulo.trim(), texto: texto.trim() }),
+  )
+
+export const removeMacro = (id) => unwrap(supabase.from('support_macros').delete().eq('id', id))

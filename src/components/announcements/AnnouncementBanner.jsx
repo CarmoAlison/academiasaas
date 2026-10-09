@@ -48,7 +48,13 @@ export function AnnouncementItem({ aviso, onClose }) {
 export default function AnnouncementBanner() {
   const { academyId } = useTenant()
   const [dismissed, setDismissed] = useState(readDismissed)
-  const query = useQuery({ queryKey: ['announcements', 'active'], queryFn: listActiveAnnouncements, staleTime: 5 * 60000, refetchInterval: 10 * 60000 })
+  const query = useQuery({
+    queryKey: ['announcements', 'active', academyId],
+    queryFn: () => listActiveAnnouncements(academyId),
+    enabled: Boolean(academyId),
+    staleTime: 5 * 60000,
+    refetchInterval: 10 * 60000,
+  })
 
   const now = Date.now()
   // a RLS já filtra; aqui garante período/academia também para o Super Admin (que lê todos)

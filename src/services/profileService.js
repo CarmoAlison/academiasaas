@@ -19,8 +19,16 @@ export const updateMyProfile = (profileId, values) =>
       .eq('id', profileId),
   )
 
-export const updateSuperAdminProfile = (id, values) =>
-  unwrap(supabase.from('super_admins').update({ nome: values.nome, email: values.email || null }).eq('id', id))
+/** Dados do próprio usuário do SaaS (qualquer papel; não altera papel nem CPF) */
+export const updateSuperAdminProfile = (sa, values) =>
+  unwrap(
+    supabase.rpc('update_my_super_profile', {
+      p_nome: values.nome ?? sa.nome,
+      p_email: 'email' in values ? values.email : (sa.email ?? null),
+      p_avatar_url: 'avatar_url' in values ? values.avatar_url : (sa.avatar_url ?? null),
+      p_alertas: values.alertas ?? sa.alertas ?? {},
+    }),
+  )
 
 /**
  * Upload do avatar em storage://avatars/{userId}/...

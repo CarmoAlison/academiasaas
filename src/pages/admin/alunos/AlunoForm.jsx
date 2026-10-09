@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
-import { Dumbbell, FileSignature, Plus, ScanLine, Trash2, UserCheck } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Trash2 } from 'lucide-react'
+import { useEffect } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import ResetPasswordButton from '../../../components/auth/ResetPasswordButton'
-import ContractModal from '../../../components/contract/ContractModal'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
 import QueryError from '../../../components/feedback/QueryError'
 import {
+  Avatar,
+  Badge,
   Button,
   Card,
   FormActions,
@@ -17,23 +18,22 @@ import {
   PageHeader,
   Select,
   StatusBadge,
+  Tabs,
   Textarea,
   useConfirm,
 } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
+import { useModules } from '../../../hooks/useModules'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { planService, unitService } from '../../../services/catalogServices'
-import { listStudentCheckins, manualCheckin } from '../../../services/checkinService'
-import { cancelContract, issueContract, listStudentContracts } from '../../../services/contractService'
-import { listStudentPaymentsAdmin } from '../../../services/paymentService'
 import { createStudent, getStudent, removeStudent, updateStudent } from '../../../services/studentService'
-import { listWorkoutsByStudent } from '../../../services/workoutService'
 import { STUDENT_STATUS, UFS } from '../../../utils/constants'
-import { formatCEP, formatCPF, formatCurrency, formatDate, formatDateTime, formatPhone, toISODate } from '../../../utils/formatters'
+import { formatCEP, formatCPF, formatCurrency, formatDate, formatPhone, toISODate } from '../../../utils/formatters'
 import { rules } from '../../../utils/validators'
 import styles from './AlunoForm.module.css'
+import { ContratosTab, FrequenciaTab, HistoricoTab, PlanoResumo, PlanoTab, TreinosTab, fichaTabs } from './FichaAluno'
 
 const EMPTY = {
   nome: '', cpf: '', data_nascimento: '', responsavel: '', telefone: '', email_contato: '',
@@ -59,185 +59,6 @@ const toForm = (s) => ({
   observacoes: s.observacoes ?? '',
 })
 
-/** Painel lateral do aluno: senha, treinos e pagamentos */
-function StudentSide({ student, academyId }) {
-  const { can } = usePermissions()
-  // só os registros deste aluno (não a academia inteira)
-  const workouts = useQuery({
-    queryKey: ['workouts', academyId, 'student', student.id],
-    queryFn: () => listWorkoutsByStudent(academyId, student.id),
-    enabled: can('treinos.ver'),
-  })
-  const payments = useQuery({
-    queryKey: ['payments', academyId, 'student', student.id],
-    queryFn: () => listStudentPaymentsAdmin(academyId, student.id, 5),
-    enabled: can('financeiro.ver'),
-  })
-  const checkins = useQuery({
-    queryKey: ['checkins', academyId, 'student', student.id],
-    queryFn: () => listStudentCheckins(student.id, 60),
-  })
-  const checkin = useMutationToast(() => manualCheckin(student.id), {
-    success: (r) => (r?.repetido ? 'Já havia check-in nas últimas 3 horas' : 'Check-in registrado'),
-    invalidate: [['checkins', academyId]],
-  })
-  const [contractOpen, setContractOpen] = useState(null)
-  const contracts = useQuery({ queryKey: ['contracts', student.id], queryFn: () => listStudentContracts(student.id) })
-  const ultimo = contracts.data?.find((c) => c.status !== 'cancelado') ?? contracts.data?.[0]
-  const issue = useMutationToast(() => issueContract(student.id), {
-    success: 'Contrato enviado. O aluno aceita pela área do aluno.',
-    invalidate: [['contracts', student.id]],
-  })
-  const cancelC = useMutationToast(cancelContract, { success: 'Contrato cancelado', invalidate: [['contracts', student.id]] })
-  const ultimos30 =(checkins.data ?? []).filter((c) => Date.now() - new Date(c.created_at) <= 30 * 86400000).length
-  const myWorkouts = (workouts.data ?? []).filter((w) => w.vigente)
-  const myPayments = payments.data ?? []
-
-  return (
-    <div className={styles.side}>
-      <Card title="Plano">
-        {student.plan ? (
-          <p>
-            <strong>{student.plan.nome}</strong>
-            <br />
-            {student.plano_valido_ate ? (
-              student.plano_valido_ate < toISODate() ? (
-                <span style={{ color: 'var(--color-danger)' }}>Venceu em {formatDate(student.plano_valido_ate)} — gere a renovação no Financeiro</span>
-              ) : (
-                <span className="text-muted">Válido até {formatDate(student.plano_valido_ate)}</span>
-              )
-            ) : (
-              <span className="text-muted">Validade definida no primeiro pagamento</span>
-            )}
-          </p>
-        ) : (
-          <p className="text-muted">Sem plano.</p>
-        )}
-      </Card>
-
-      <Card
-        title="Frequência"
-        actions={
-          can('alunos.editar') && (
-            <Button size="sm" variant="ghost" icon={UserCheck} loading={checkin.isPending} onClick={() => checkin.mutate()}>
-              Check-in
-            </Button>
-          )
-        }
-      >
-        {checkins.isPending ? (
-          <p className="text-muted">Carregando…</p>
-        ) : (
-          <>
-            <p style={{ marginBottom: 8 }}>
-              <strong>{ultimos30}</strong> check-in(s) nos últimos 30 dias
-              <br />
-              <span className="text-muted">
-                {checkins.data?.[0] ? `Último em ${formatDateTime(checkins.data[0].created_at)}` : 'Nenhum check-in ainda'}
-              </span>
-            </p>
-            {checkins.data?.length > 0 && (
-              <ul className={styles.list}>
-                {checkins.data.slice(0, 5).map((c) => (
-                  <li key={c.id}>
-                    <ScanLine size={16} />
-                    <span>{formatDateTime(c.created_at)}</span>
-                    <span className="text-muted">{c.origem === 'qr' ? 'QR Code' : 'Manual'}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
-      </Card>
-
-      <Card
-        title="Contrato"
-        actions={
-          can('alunos.editar') && (
-            <Button size="sm" variant="ghost" icon={FileSignature} loading={issue.isPending} onClick={() => issue.mutate()}>
-              {ultimo ? 'Reenviar' : 'Gerar'}
-            </Button>
-          )
-        }
-      >
-        {contracts.isPending ? (
-          <p className="text-muted">Carregando…</p>
-        ) : !ultimo ? (
-          <p className="text-muted">Nenhum contrato. Gere a partir do modelo em Configurações; o aluno aceita pela área dele.</p>
-        ) : (
-          <>
-            <p style={{ marginBottom: 8 }}>
-              <StatusBadge status={ultimo.status} />{' '}
-              <span className="text-muted">
-                {ultimo.status === 'aceito' ? `em ${formatDateTime(ultimo.aceito_em)}` : `enviado em ${formatDateTime(ultimo.created_at)}`}
-              </span>
-            </p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Button size="sm" variant="outline" onClick={() => setContractOpen(ultimo.id)}>
-                Ver contrato
-              </Button>
-              {ultimo.status === 'pendente' && can('alunos.editar') && (
-                <Button size="sm" variant="ghost" loading={cancelC.isPending} onClick={() => cancelC.mutate(ultimo.id)}>
-                  Cancelar
-                </Button>
-              )}
-            </div>
-          </>
-        )}
-        <ContractModal contractId={contractOpen} onClose={() => setContractOpen(null)} />
-      </Card>
-
-      <Card title="Acesso">
-        <p className="text-muted" style={{ marginBottom: 12 }}>
-          Login com CPF <strong>{formatCPF(student.profile.cpf)}</strong>.
-          {student.profile.must_change_password && ' Ainda usando a senha padrão.'}
-        </p>
-        {can('alunos.editar') && <ResetPasswordButton profileId={student.profile.id} nome={student.profile.nome} />}
-      </Card>
-
-      {can('treinos.ver') && (
-        <Card
-          title="Treinos ativos"
-          actions={can('treinos.criar') && <Button size="sm" variant="ghost" icon={Plus} to={`/admin/treinos/novo?aluno=${student.id}`}>Novo</Button>}
-        >
-          {myWorkouts.length ? (
-            <ul className={styles.list}>
-              {myWorkouts.map((w) => (
-                <li key={w.id}>
-                  <Dumbbell size={16} />
-                  <Link to={`/admin/treinos/${w.id}`}>{w.nome}</Link>
-                  <span className="text-muted">{w.data_fim ? `até ${formatDate(w.data_fim)}` : ''}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted">Nenhum treino ativo.</p>
-          )}
-        </Card>
-      )}
-
-      {can('financeiro.ver') && (
-        <Card title="Últimos pagamentos">
-          {myPayments.length ? (
-            <ul className={styles.list}>
-              {myPayments.map((p) => (
-                <li key={p.id}>
-                  <span>{formatDate(p.vencimento)}</span>
-                  <strong>{formatCurrency(p.valor)}</strong>
-                  <StatusBadge status={p.situacao} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted">Nenhum pagamento.</p>
-          )}
-        </Card>
-      )}
-    </div>
-  )
-}
-
 export default function AlunoForm() {
   const { id } = useParams()
   const isNew = !id
@@ -246,6 +67,10 @@ export default function AlunoForm() {
   const { can } = usePermissions()
   const [confirm, confirmDialog] = useConfirm()
   const readOnly = !isNew && !can('alunos.editar')
+  const mod = useModules()
+  const [params, setParams] = useSearchParams()
+  const tabs = fichaTabs({ can, has: mod.has })
+  const tab = tabs.some((t) => t.key === params.get('tab')) ? params.get('tab') : 'dados'
 
   const student = useQuery({ queryKey: ['student', id], queryFn: () => getStudent(id), enabled: !isNew })
   const plans = useQuery({ queryKey: ['plans', academyId], queryFn: () => planService.list(academyId) })
@@ -385,10 +210,38 @@ export default function AlunoForm() {
       {isNew ? (
         form
       ) : (
-        <div className={styles.layout}>
-          {form}
-          <StudentSide student={student.data} academyId={academyId} />
-        </div>
+        <>
+          <div className={styles.summary}>
+            <Avatar name={student.data.profile?.nome} src={student.data.profile?.avatar_url} size={40} />
+            <StatusBadge status={student.data.status} />
+            <span>{student.data.plan?.nome ?? 'Sem plano'}</span>
+            {student.data.plano_valido_ate && student.data.plano_valido_ate < toISODate() && <Badge tone="danger">Plano vencido</Badge>}
+            {student.data.profile?.telefone && <span className="text-muted">{formatPhone(student.data.profile.telefone)}</span>}
+          </div>
+          <Tabs items={tabs} value={tab} onChange={(key) => setParams(key === 'dados' ? {} : { tab: key }, { replace: true })} />
+          {tab === 'dados' && (
+            <div className={styles.layout}>
+              {form}
+              <div className={styles.side}>
+                <Card title="Plano">
+                  <PlanoResumo student={student.data} />
+                </Card>
+                <Card title="Acesso">
+                  <p className="text-muted" style={{ marginBottom: 12 }}>
+                    Login com CPF <strong>{formatCPF(student.data.profile.cpf)}</strong>.
+                    {student.data.profile.must_change_password && ' Ainda usando a senha padrão.'}
+                  </p>
+                  {can('alunos.editar') && <ResetPasswordButton profileId={student.data.profile.id} nome={student.data.profile.nome} />}
+                </Card>
+              </div>
+            </div>
+          )}
+          {tab === 'plano' && <PlanoTab student={student.data} academyId={academyId} />}
+          {tab === 'treinos' && <TreinosTab student={student.data} academyId={academyId} />}
+          {tab === 'frequencia' && <FrequenciaTab student={student.data} academyId={academyId} />}
+          {tab === 'contratos' && <ContratosTab student={student.data} />}
+          {tab === 'historico' && <HistoricoTab student={student.data} plans={plans.data} />}
+        </>
       )}
     </>
   )

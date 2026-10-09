@@ -1,17 +1,18 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CheckCircle2, LifeBuoy, Plus, RotateCcw } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowLeft, CheckCircle2, LifeBuoy, Paperclip, Plus, RotateCcw } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import QueryError from '../../../components/feedback/QueryError'
 import TicketList from '../../../components/support/TicketList'
 import TicketThread from '../../../components/support/TicketThread'
 import split from '../../../components/support/SupportSplit.module.css'
-import { Button, Card, FormGrid, FullRow, Input, Modal, PageHeader, Select, Tabs, Textarea } from '../../../components/ui'
+import { Badge, Button, Card, FormGrid, FullRow, Input, Modal, PageHeader, Select, Tabs, Textarea, useToast } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { patchTicketInCache } from '../../../hooks/useSupportRealtime'
-import { listTickets, openTicket, setTicketStatus, TICKET_CATEGORIES, TICKET_PRIORITIES } from '../../../services/supportService'
+import { listTickets, openTicket, setTicketStatus, TICKET_CATEGORIES, TICKET_PRIORITIES, uploadAttachment } from '../../../services/supportService'
+import { errorMessage } from '../../../utils/errors'
 import { rules } from '../../../utils/validators'
 
 function NewTicketModal({ onClose, onCreated }) {
@@ -23,12 +24,36 @@ function NewTicketModal({ onClose, onCreated }) {
       mensagem: [rules.required('Descreva o que aconteceu')],
     },
   )
-  const mutation = useMutationToast((v) => openTicket(academyId, v), {
+  const toast = useToast()
+  const fileRef = useRef(null)
+  const [files, setFiles] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const mutation = useMutationToast((v) => openTicket(academyId, { ...v, anexos: files }), {
     success: 'Chamado aberto! Você recebe a resposta aqui mesmo.',
     invalidate: [['tickets']],
     onSuccess: (id) => onCreated(id),
   })
   const submit = handleSubmit((v) => mutation.mutate(v))
+
+  const onFiles = async (e) => {
+    const picked = [...(e.target.files ?? [])]
+    e.target.value = ''
+    if (!picked.length) return
+    if (files.length + picked.length > 5) {
+      toast.error('Envie no máximo 5 anexos')
+      return
+    }
+    setUploading(true)
+    try {
+      const done = []
+      for (const f of picked) done.push(await uploadAttachment(academyId, f))
+      setFiles((prev) => [...prev, ...done])
+    } catch (err) {
+      toast.error(errorMessage(err))
+    } finally {
+      setUploading(false)
+    }
+  }
 
   return (
     <Modal
@@ -62,6 +87,28 @@ function NewTicketModal({ onClose, onCreated }) {
               placeholder="Conte o que aconteceu, em qual tela e, se possível, o passo a passo para repetir."
               {...field('mensagem')}
             />
+          </FullRow>
+          <FullRow>
+            <input ref={fileRef} type="file" multiple hidden accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/plain" onChange={onFiles} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+              <Button type="button" variant="outline" size="sm" icon={Paperclip} loading={uploading} onClick={() => fileRef.current?.click()}>
+                Anexar prints ou arquivos
+              </Button>
+              {files.map((f) => (
+                <Badge key={f.path}>
+                  {f.nome}{' '}
+                  <button
+                    type="button"
+                    aria-label={`Remover ${f.nome}`}
+                    onClick={() => setFiles((prev) => prev.filter((x) => x.path !== f.path))}
+                    style={{ border: 0, background: 'none', cursor: 'pointer', padding: 0, color: 'inherit' }}
+                  >
+                    ×
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <small className="text-muted">Imagens, PDF ou TXT, até 10 MB cada (máx. 5)</small>
           </FullRow>
         </FormGrid>
       </form>

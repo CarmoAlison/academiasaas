@@ -156,3 +156,35 @@ export const completeDay = (workout, dayId) =>
 
 /** Desfaz a marcação de concluído */
 export const undoComplete = (logId) => unwrap(supabase.from('workout_logs').delete().eq('id', logId))
+
+/** Registros por exercício do aluno (marcação do dia e carga), mais recentes primeiro */
+export const listMyExerciseLogs = (studentId) =>
+  unwrap(
+    supabase
+      .from('exercise_logs')
+      .select('id, workout_exercise_id, exercise_id, data, feito, carga')
+      .eq('student_id', studentId)
+      .order('data', { ascending: false })
+      .limit(3000),
+  )
+
+/**
+ * Marca o exercício e/ou anota a carga do dia (um registro por exercício da ficha por dia).
+ * @param {{ workout: object, item: object, data: string, feito?: boolean, carga?: number|null }} p
+ */
+export function saveExerciseLog({ workout, item, data, ...patch }) {
+  return unwrap(
+    supabase.from('exercise_logs').upsert(
+      {
+        academy_id: workout.academy_id,
+        student_id: workout.student_id,
+        workout_id: workout.id,
+        workout_exercise_id: item.id,
+        exercise_id: item.exercise_id,
+        data,
+        ...patch,
+      },
+      { onConflict: 'workout_exercise_id,data' },
+    ),
+  )
+}

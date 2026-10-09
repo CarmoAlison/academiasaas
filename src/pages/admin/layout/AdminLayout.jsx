@@ -8,6 +8,7 @@ import UserMenu from '../../../components/shell/UserMenu'
 import { Badge, Button } from '../../../components/ui'
 import { useAuth, useTenant } from '../../../hooks/useAuth'
 import { useBrand } from '../../../hooks/useBrand'
+import { useModules } from '../../../hooks/useModules'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { useSupportRealtime } from '../../../hooks/useSupportRealtime'
 import { unreadTickets } from '../../../services/supportService'
@@ -20,12 +21,13 @@ export default function AdminLayout() {
   const { context } = useAuth()
   const { academy, academyId, membership, impersonating, setAcademy } = useTenant()
   const { canAny, roles } = usePermissions()
-  useSupportRealtime(Boolean(academyId) && !impersonating)
+  const modules = useModules()
+  useSupportRealtime(Boolean(academyId) && !impersonating && modules.has('suporte'))
   // respostas do suporte ainda não lidas (contador no menu)
   const unreadSupport = useQuery({
     queryKey: ['tickets-unread', academyId],
     queryFn: () => unreadTickets({ academyId }),
-    enabled: Boolean(academyId) && !impersonating,
+    enabled: Boolean(academyId) && !impersonating && modules.has('suporte'),
     refetchInterval: 60000,
   })
   const navigate = useNavigate()
@@ -45,7 +47,7 @@ export default function AdminLayout() {
   return (
     <AppShell
       brand={{ title: academy?.nome ?? 'Academia', subtitle: 'Gestão', logo: brand.logo }}
-      groups={visibleNav(canAny, { impersonating, badges: { suporte: unreadSupport.data || null } })}
+      groups={visibleNav(canAny, { impersonating, badges: { suporte: unreadSupport.data || null }, hasModule: modules.has })}
       topbarLeft={
         <div className={styles.topLeft}>
           {brand.logo ? (

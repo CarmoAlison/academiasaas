@@ -1,0 +1,99 @@
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.info {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-14);
+}
+
+.info li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.info li > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-primary);
+}
+
+.info li > :last-child {
+  overflow-wrap: anywhere;
+}
+
+/* linhas "rótulo ... valor" do plano */
+.info li:has(> strong) {
+  justify-content: space-between;
+}
+
+.info li > strong {
+  text-align: right;
+}
+
+.hours {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.hoursTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
+}
+
+.hoursTitle svg {
+  color: var(--color-primary);
+}
+
+.open,
+.closed {
+  margin-left: auto;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-12);
+}
+
+.open {
+  background: var(--color-success-light);
+  color: var(--color-success-text);
+}
+
+.closed {
+  background: var(--color-muted-light);
+  color: var(--color-text-muted);
+}
+
+.hours ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-14);
+}
+
+.hours li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+}
+
+.today {
+  background: var(--color-primary-light);
+  font-weight: var(--fw-semibold);
+}

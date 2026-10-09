@@ -42,7 +42,7 @@ export default function ProfileCard({ profile, superAdmin, extra }) {
     setSaving(true)
     try {
       if (profile) await updateMyProfile(profile.id, values)
-      else await updateSuperAdminProfile(superAdmin.id, { nome: values.nome, email: values.email_contato })
+      else await updateSuperAdminProfile(superAdmin, { nome: values.nome, email: values.email_contato || null })
       await refresh()
       toast.success('Perfil atualizado')
     } catch (err) {
@@ -55,11 +55,12 @@ export default function ProfileCard({ profile, superAdmin, extra }) {
   const onAvatar = async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
-    if (!file || !profile) return
+    if (!file || (!profile && !superAdmin)) return
     setUploading(true)
     try {
       const url = await uploadAvatar(user.id, file)
-      await updateMyProfile(profile.id, { ...profile, avatar_url: url })
+      if (profile) await updateMyProfile(profile.id, { ...profile, avatar_url: url })
+      else await updateSuperAdminProfile(superAdmin, { avatar_url: url })
       await refresh()
       toast.success('Foto atualizada')
     } catch (err) {
@@ -74,8 +75,8 @@ export default function ProfileCard({ profile, superAdmin, extra }) {
       <Card className={styles.side}>
         <div className={styles.identity}>
           <div className={styles.avatarWrap}>
-            <Avatar name={source.nome} src={profile?.avatar_url} size={96} />
-            {profile && (
+            <Avatar name={source.nome} src={source.avatar_url} size={96} />
+            {(profile || superAdmin) && (
               <button
                 type="button"
                 className={styles.avatarBtn}

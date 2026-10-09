@@ -1,12 +1,16 @@
 import { CalendarDays, ChevronRight, CreditCard, Dumbbell, IdCard, ScanLine } from 'lucide-react'
 import { Button, SkeletonCard, StatusBadge } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
+import { useModules } from '../../../hooks/useModules'
 import { firstName, formatCurrency, formatDate, formatTime, paymentStatus, toDate, toISODate } from '../../../utils/formatters'
 import { dayLabel, exercisesLabel, weekPosition } from '../../../utils/workoutDays'
 import { ContractBanner } from '../contrato/Contratos'
 import DelinquencyBanner from '../DelinquencyBanner'
 import styles from '../client.module.css'
-import { useMyCheckins, useMyPayments, useMyStudent, useMyWeekLogs, useMyWorkouts, useWeekSchedule, weekStart } from '../useStudent'
+import { useAcademySettings, useMyCheckins, useMyPayments, useMyStudent, useMyWeekLogs, useMyWorkouts, useWeekSchedule, weekStart } from '../useStudent'
+import AniversarioBanner from './AniversarioBanner'
+import HorarioTile from './HorarioTile'
+import ProgressoTile from './ProgressoTile'
 
 const greeting = () => {
   const h = new Date().getHours()
@@ -14,13 +18,15 @@ const greeting = () => {
 }
 
 export default function Dashboard() {
-  const { membership } = useTenant()
+  const { membership, academy } = useTenant()
+  const { has } = useModules()
   const student = useMyStudent()
   const workouts = useMyWorkouts()
   const logs = useMyWeekLogs()
   const payments = useMyPayments()
   const week = useWeekSchedule(weekStart())
   const checkins = useMyCheckins()
+  const settings = useAcademySettings().data
   const today = toISODate()
 
   // Treino da semana: ficha ativa, dia de hoje e progresso
@@ -50,11 +56,12 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <DelinquencyBanner />
-      <ContractBanner />
+      <AniversarioBanner nome={membership?.profile?.nome} nascimento={student.data?.data_nascimento} academia={academy?.nome} />
+      {has('financeiro') && <DelinquencyBanner />}
+      {has('contratos') && <ContractBanner />}
 
       <div className={styles.grid}>
-        {workouts.isPending ? (
+        {has('treinos') && (workouts.isPending ? (
           <SkeletonCard />
         ) : (
           <section className={`${styles.tile} ${styles.highlight}`}>
@@ -92,7 +99,9 @@ export default function Dashboard() {
               <span className={styles.muted}>Nenhum treino ativo. Fale com seu professor.</span>
             )}
           </section>
-        )}
+        ))}
+
+        {(has('checkin') || has('treinos')) && <ProgressoTile />}
 
         <section className={styles.tile}>
           <div className={styles.tileHeader}>
@@ -119,6 +128,9 @@ export default function Dashboard() {
           )}
         </section>
 
+        <HorarioTile horarios={settings?.horarios} />
+
+        {has('checkin') && (
         <section className={styles.tile}>
           <div className={styles.tileHeader}>
             <span className={styles.tileTitle}>
@@ -135,7 +147,9 @@ export default function Dashboard() {
             {ultimoCheckin ? `Último check-in em ${formatDate(ultimoCheckin)}` : 'Faça check-in pelo QR Code da recepção'}
           </span>
         </section>
+        )}
 
+        {has('aulas') && (
         <section className={styles.tile}>
           <div className={styles.tileHeader}>
             <span className={styles.tileTitle}>
@@ -167,7 +181,9 @@ export default function Dashboard() {
             <span className={styles.muted}>Nenhuma aula reservada nesta semana.</span>
           )}
         </section>
+        )}
 
+        {has('financeiro') && (
         <section className={styles.tile}>
           <div className={styles.tileHeader}>
             <span className={styles.tileTitle}>
@@ -193,6 +209,7 @@ export default function Dashboard() {
             <span className={styles.muted}>Tudo em dia! ✅</span>
           )}
         </section>
+        )}
       </div>
     </>
   )

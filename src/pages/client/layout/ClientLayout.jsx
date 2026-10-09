@@ -1,4 +1,4 @@
-import { CalendarDays, Dumbbell, Home, User, Wallet } from 'lucide-react'
+import { CalendarDays, Dumbbell, Home, ScanLine, User, Wallet } from 'lucide-react'
 import { Suspense } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import ErrorBoundary from '../../../components/feedback/ErrorBoundary'
@@ -10,17 +10,28 @@ import UserMenu from '../../../components/shell/UserMenu'
 import { Button } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { useBrand } from '../../../hooks/useBrand'
+import { useModules } from '../../../hooks/useModules'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { setPreferredArea } from '../../../routes/accessOptions'
 import styles from './ClientLayout.module.css'
 
 const NAV = [
   { to: '/client/dashboard', label: 'Início', icon: Home },
-  { to: '/client/treinos', label: 'Treinos', icon: Dumbbell },
-  { to: '/client/aulas', label: 'Aulas', icon: CalendarDays },
-  { to: '/client/financeiro', label: 'Financeiro', icon: Wallet },
+  { to: '/client/treinos', label: 'Treinos', icon: Dumbbell, module: 'treinos' },
+  { to: '/client/aulas', label: 'Aulas', icon: CalendarDays, module: 'aulas' },
+  { to: '/client/financeiro', label: 'Financeiro', icon: Wallet, module: 'financeiro' },
   { to: '/client/perfil', label: 'Perfil', icon: User },
 ]
+
+// ação mais usada pelo aluno: botão central em destaque no menu inferior
+const CHECKIN = { to: '/client/checkin', label: 'Check-in', icon: ScanLine, module: 'checkin', highlight: true }
+
+/** Menu com o Check-in no meio */
+function withCheckin(items, has) {
+  if (!has('checkin')) return items
+  const middle = Math.floor(items.length / 2)
+  return [...items.slice(0, middle), CHECKIN, ...items.slice(middle)]
+}
 
 /** Layout do aluno: topbar + bottom nav no mobile */
 export default function ClientLayout() {
@@ -29,6 +40,8 @@ export default function ClientLayout() {
   const location = useLocation()
   const profile = membership?.profile
   const brand = useBrand()
+  const { has } = useModules()
+  const nav = withCheckin(NAV.filter((i) => has(i.module)), has)
 
   return (
     <div className={styles.shell}>
@@ -48,7 +61,7 @@ export default function ClientLayout() {
             )}
           </div>
           <nav className={styles.desktopNav} aria-label="Navegação">
-            {NAV.map(({ to, label }) => (
+            {nav.map(({ to, label }) => (
               <NavLink key={to} to={to} className={({ isActive }) => `${styles.link} ${isActive ? styles.active : ''}`}>
                 {label}
               </NavLink>
@@ -75,7 +88,7 @@ export default function ClientLayout() {
         </ErrorBoundary>
       </main>
 
-      <BottomNav items={NAV} />
+      <BottomNav items={nav} />
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { AnnouncementItem } from '../../../components/announcements/AnnouncementBanner'
 import QueryError from '../../../components/feedback/QueryError'
-import { Badge, Button, DataTable, FormGrid, FullRow, Input, Modal, PageHeader, Select, Switch, Textarea, Tooltip, useConfirm } from '../../../components/ui'
+import { Badge, Button, Checkbox, DataTable, FormGrid, FullRow, Input, Modal, PageHeader, Select, Switch, Textarea, Tooltip, useConfirm } from '../../../components/ui'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import {
@@ -14,7 +14,8 @@ import {
   saveAnnouncement,
   toggleAnnouncement,
 } from '../../../services/announcementService'
-import { listAcademies } from '../../../services/saasService'
+import { listModules } from '../../../services/moduleService'
+import { listAcademies, listSaasPlans } from '../../../services/saasService'
 import { formatDateTime } from '../../../utils/formatters'
 import { rules } from '../../../utils/validators'
 
@@ -36,6 +37,8 @@ function situacao(a) {
 
 function AvisoModal({ aviso, onClose }) {
   const academies = useQuery({ queryKey: ['academies'], queryFn: listAcademies })
+  const plans = useQuery({ queryKey: ['saas-plans'], queryFn: listSaasPlans })
+  const modules = useQuery({ queryKey: ['saas-modules'], queryFn: listModules })
   const { field, values, setValue, handleSubmit } = useForm(
     {
       titulo: aviso?.titulo ?? '',
@@ -43,6 +46,8 @@ function AvisoModal({ aviso, onClose }) {
       tipo: aviso?.tipo ?? 'info',
       publico: aviso?.publico ?? 'equipe',
       academy_id: aviso?.academy_id ?? '',
+      planos: aviso?.planos ?? [],
+      modulo: aviso?.modulo ?? '',
       link: aviso?.link ?? '',
       inicio: toLocalInput(aviso?.inicio ?? new Date().toISOString()),
       fim: toLocalInput(aviso?.fim),
@@ -94,6 +99,26 @@ function AvisoModal({ aviso, onClose }) {
             options={(academies.data ?? []).map((a) => ({ value: a.id, label: a.nome }))}
             {...field('academy_id')}
           />
+          <Select
+            label="Só academias com o módulo"
+            placeholder="Qualquer academia"
+            options={(modules.data ?? []).filter((m) => m.ativo && !m.essencial).map((m) => ({ value: m.slug, label: m.nome }))}
+            {...field('modulo')}
+          />
+          <FullRow>
+            <span style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 6 }}>Só academias dos planos</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 18px' }}>
+              {(plans.data ?? []).map((p) => (
+                <Checkbox
+                  key={p.id}
+                  label={p.nome}
+                  checked={values.planos.includes(p.id)}
+                  onChange={(on) => setValue('planos', on ? [...values.planos, p.id] : values.planos.filter((x) => x !== p.id))}
+                />
+              ))}
+            </div>
+            <small className="text-muted">Nenhum marcado = todos os planos</small>
+          </FullRow>
           <Input label="Link (opcional)" type="url" placeholder="https://…" {...field('link')} />
           <Input label="Mostrar a partir de" type="datetime-local" {...field('inicio')} />
           <Input label="Até (opcional)" type="datetime-local" hint="Vazio = até desativar" {...field('fim')} />
@@ -157,6 +182,8 @@ export default function Avisos() {
                 <div className="text-muted" style={{ fontSize: 12 }}>
                   {ANNOUNCEMENT_TYPES.find((t) => t.value === a.tipo)?.label} · {a.academy?.nome ?? 'Todas as academias'} ·{' '}
                   {ANNOUNCEMENT_AUDIENCES.find((p) => p.value === a.publico)?.label}
+                  {a.planos?.length ? ` · ${a.planos.length} plano(s)` : ''}
+                  {a.modulo ? ` · módulo ${a.modulo}` : ''}
                 </div>
               </>
             ),

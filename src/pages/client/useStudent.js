@@ -5,8 +5,8 @@ import { listStudentCheckins } from '../../services/checkinService'
 import { classService } from '../../services/classService'
 import { staffNames } from '../../services/roleService'
 import { listStudentPayments } from '../../services/paymentService'
-import { getMyStudent } from '../../services/studentService'
-import { listStudentWorkouts, listWorkoutLogs } from '../../services/workoutService'
+import { getMyStudent, myProgress } from '../../services/studentService'
+import { listMyExerciseLogs, listStudentWorkouts, listWorkoutLogs } from '../../services/workoutService'
 import { addDays, toISODate } from '../../utils/formatters'
 import { startOfWeek } from '../../utils/workoutDays'
 
@@ -134,4 +134,16 @@ export function useWeekSchedule(start) {
     error: classes.error || occupancy.error || bookings.error,
     refetch: () => Promise.all([classes.refetch(), occupancy.refetch(), bookings.refetch()]),
   }
+}
+
+/** Marcações e cargas por exercício do aluno logado */
+export function useMyExerciseLogs() {
+  const { studentId } = useStudentId()
+  return useQuery({ queryKey: ['my-exercise-logs', studentId], queryFn: () => listMyExerciseLogs(studentId), enabled: Boolean(studentId) })
+}
+
+/** Meta semanal, semanas treinadas e totais (sequência e conquistas) */
+export function useMyProgress() {
+  const { studentId } = useStudentId()
+  return useQuery({ queryKey: ['my-progress', studentId], queryFn: () => myProgress(studentId), enabled: Boolean(studentId) })
 }

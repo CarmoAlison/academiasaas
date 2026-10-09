@@ -7,6 +7,7 @@ import {
   Download,
   FilePlus2,
   FileText,
+  MessageCircle,
   Palette,
   Plus,
   RotateCcw,
@@ -16,8 +17,10 @@ import {
 import { useState } from 'react'
 import QueryError from '../../../components/feedback/QueryError'
 import ReceiptModal from '../../../components/receipt/ReceiptModal'
+import BatchChargeModal from '../../../components/whatsapp/BatchChargeModal'
 import {
   Button,
+  Checkbox,
   DataTable,
   FormGrid,
   FullRow,
@@ -32,8 +35,10 @@ import {
   useConfirm,
   useToast,
 } from '../../../components/ui'
+import { useAcademySettings } from '../../../hooks/useAcademySettings'
 import { useTenant } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
+import { useModules } from '../../../hooks/useModules'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { useServerTable } from '../../../hooks/useServerTable'
@@ -50,6 +55,7 @@ import {
   reopenPayment,
 } from '../../../services/paymentService'
 import { listStudentOptions } from '../../../services/studentService'
+import { calcEncargos } from '../../../utils/cobranca'
 import { PAYMENT_METHODS } from '../../../utils/constants'
 import { exportCSV } from '../../../utils/csv'
 import { errorMessage } from '../../../utils/errors'
@@ -113,9 +119,23 @@ function NewPaymentModal({ academyId, onClose, invalidate }) {
   )
 }
 
-function PayModal({ payment, onClose, onPaid, invalidate }) {
+function PayModal({ payment, settings, onClose, onPaid, invalidate }) {
   const [forma, setForma] = useState('pix')
-  const mutation = useMutationToast(() => markPaid(payment.id, forma), {
+  const enc = calcEncargos(payment, settings)
+  const [comEncargos, setComEncargos] = useState(enc.encargos > 0)
+  const mutation = useMutationToast(
+    () =>
+      markPaid(
+        payment.id,
+        forma,
+        comEncargos && enc.encargos > 0
+          ? {
+              valor: enc.total,
+              descricao: `${payment.descricao ?? 'Mensalidade'} (+ multa ${formatCurrency(enc.multa)} e juros ${formatCurrency(enc.juros)})`,
+            }
+          : {},
+      ),
+    {
     success: 'Pagamento registrado — recibo gerado',
     invalidate,
     onSuccess: () => {
@@ -141,9 +161,21 @@ function PayModal({ payment, onClose, onPaid, invalidate }) {
       }
     >
       <p style={{ marginBottom: 16 }}>
-        {payment.aluno_nome} — <strong>{formatCurrency(payment.valor)}</strong> (venc. {formatDate(payment.vencimento)})
+        {payment.aluno_nome} — <strong>{formatCurrency(comEncargos ? enc.total : payment.valor)}</strong> (venc. {formatDate(payment.vencimento)})
       </p>
       <Select label="Forma de pagamento" options={PAYMENT_METHODS} value={forma} onChange={(e) => setForma(e.target.value)} />
+      {enc.encargos > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <Checkbox
+            checked={comEncargos}
+            onChange={setComEncargos}
+            label={`Cobrar multa (${formatCurrency(enc.multa)}) e juros de ${enc.dias} dia(s) (${formatCurrency(enc.juros)})`}
+          />
+          <small className="text-muted" style={{ display: 'block', marginTop: 4 }}>
+            Valor original {formatCurrency(payment.valor)}. Desmarque para receber sem encargos.
+          </small>
+        </div>
+      )}
     </Modal>
   )
 }
@@ -157,6 +189,9 @@ export default function Financeiro() {
   const [paying, setPaying] = useState(null)
   const [receiptFor, setReceiptFor] = useState(null)
   const [exporting, setExporting] = useState(false)
+  const [batchOpen, setBatchOpen] = useState(false)
+  const mod = useModules()
+  const settings = useAcademySettings().data
 
   // tabela paginada no servidor; o mês e a situação são filtros
   const { query, tableProps, filters, setFilter, search } = useServerTable({
@@ -174,6 +209,7 @@ export default function Financeiro() {
     queryFn: () => paymentsSummary(academyId, range.de, range.ate),
   })
   const s = summary.data
+  const recebidoPct = s && Number(s.previsto) ? Math.round((Number(s.recebido) / Number(s.previsto)) * 100) : null
   const invalidate = [['payments', academyId], ['admin-dashboard', academyId]]
 
   const reopenMutation = useMutationToast(reopenPayment, { success: 'Pagamento reaberto', invalidate })
@@ -220,6 +256,11 @@ export default function Financeiro() {
         subtitle="Mensalidades, recebimentos e inadimplência"
         actions={
           <>
+            {mod.has('whatsapp') && (
+              <Button variant="outline" icon={MessageCircle} onClick={() => setBatchOpen(true)}>
+                Cobrar atrasados
+              </Button>
+            )}
             {can('financeiro.exportar') && (
               <Button variant="outline" icon={Download} onClick={onExport} loading={exporting} disabled={!tableProps.total}>
                 Exportar CSV
@@ -273,11 +314,13 @@ export default function Financeiro() {
           icon={CheckCircle2}
           tone="success"
           loading={summary.isPending}
-          hint={
-            s?.recebido_caixa !== undefined
-              ? `Parcelas deste mês já pagas · entrou no caixa no mês (data do pagamento): ${formatCurrency(s.recebido_caixa)}`
-              : 'Parcelas com vencimento neste mês já pagas'
-          }
+          progress={recebidoPct ?? undefined}
+          hint={[
+            recebidoPct !== null ? `${recebidoPct}% do previsto (${formatCurrency(s.previsto)})` : 'Parcelas com vencimento neste mês já pagas',
+            s?.recebido_caixa !== undefined ? `entrou no caixa no mês: ${formatCurrency(s.recebido_caixa)}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         />
         <StatCard
           label="A receber"
@@ -326,7 +369,24 @@ export default function Financeiro() {
         columns={[
           { key: 'aluno_nome', header: 'Aluno', render: (p) => <strong>{p.aluno_nome}</strong> },
           { key: 'descricao', header: 'Descrição', render: (p) => `${p.descricao ?? 'Cobrança'}${p.plano_nome ? ` · ${p.plano_nome}` : ''}` },
-          { key: 'valor', header: 'Valor', align: 'right', render: (p) => formatCurrency(p.valor) },
+          {
+            key: 'valor',
+            header: 'Valor',
+            align: 'right',
+            render: (p) => {
+              const enc = p.status === 'pendente' ? calcEncargos(p, settings) : null
+              return (
+                <>
+                  {formatCurrency(p.valor)}
+                  {enc?.encargos > 0 && (
+                    <small className="text-muted" style={{ display: 'block' }} title={`Multa ${formatCurrency(enc.multa)} + juros ${formatCurrency(enc.juros)}`}>
+                      hoje {formatCurrency(enc.total)}
+                    </small>
+                  )}
+                </>
+              )
+            },
+          },
           { key: 'vencimento', header: 'Vencimento', render: (p) => formatDate(p.vencimento) },
           { key: 'situacao', header: 'Status', render: (p) => <StatusBadge status={p.situacao} /> },
           {
@@ -404,7 +464,8 @@ export default function Financeiro() {
       />
 
       {newOpen && <NewPaymentModal academyId={academyId} invalidate={invalidate} onClose={() => setNewOpen(false)} />}
-      {paying && <PayModal payment={paying} invalidate={invalidate} onClose={() => setPaying(null)} onPaid={setReceiptFor} />}
+      {batchOpen && <BatchChargeModal onClose={() => setBatchOpen(false)} />}
+      {paying && <PayModal payment={paying} settings={settings} invalidate={invalidate} onClose={() => setPaying(null)} onPaid={setReceiptFor} />}
       <ReceiptModal paymentId={receiptFor} onClose={() => setReceiptFor(null)} />
     </>
   )

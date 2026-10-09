@@ -4,7 +4,7 @@ import { nowISO, supabase, unwrap } from './supabaseClient'
 // --- Academias ----------------------------------------------------------
 
 const ACADEMY_SELECT =
-  'id, nome, cnpj, email, telefone, logo_url, status, created_at, saas_plan_id, ciclo, ciclo_inicio, uf, cidade, offer_id, oferta_ate, saas_plan:saas_plans(id, nome, valor, desconto_anual_pct), academy_addons(addon_id, valor, addon:saas_addons(id, nome, slug))'
+  'id, nome, cnpj, email, telefone, logo_url, status, created_at, saas_plan_id, ciclo, ciclo_inicio, uf, cidade, offer_id, oferta_ate, modulos_override, saas_plan:saas_plans(id, nome, valor, desconto_anual_pct), academy_addons(addon_id, valor, addon:saas_addons(id, nome, slug))'
 
 export const listAcademies = () =>
   unwrap(supabase.from('academies').select(ACADEMY_SELECT).is('deleted_at', null).order('created_at', { ascending: false }))
@@ -100,6 +100,8 @@ export const saveSaasPlan = (id, values) => {
       .map((r) => r.trim())
       .filter(Boolean),
     destaque: Boolean(values.destaque),
+    // null = todos os módulos (inclusive os criados depois)
+    modulos: values.modulos_todos ? null : values.modulos ?? [],
     ordem: Number(values.ordem || 0),
     ativo: values.ativo,
   }
@@ -114,7 +116,7 @@ export const removeSaasPlan = (id) =>
 export function listSaasInvoices({ academyId, competencia } = {}) {
   let query = supabase
     .from('saas_invoices')
-    .select('*, academy:academies(id, nome), saas_plan:saas_plans(nome)')
+    .select('*, academy:academies(id, nome, telefone, email), saas_plan:saas_plans(id, nome)')
     .order('vencimento', { ascending: false })
   if (academyId) query = query.eq('academy_id', academyId)
   if (competencia) query = query.eq('competencia', competencia)
@@ -252,4 +254,58 @@ export async function createAcademyWithSubscription(values, subscription) {
     await setAcademySubscription(id, subscription)
   }
   return id
+}
+
+// --- Gestão (migração 018) -------------------------------------------------
+
+/** Por academia: alunos x limite, último acesso do admin, atraso, módulos e MRR → { [academy_id]: {...} } */
+export async function academiesOverview() {
+  const rows = await unwrap(supabase.rpc('super_academies_overview'))
+  return Object.fromEntries((rows ?? []).map((r) => [r.academy_id, r]))
+}
+
+/** Busca global (academias, alunos/equipe por nome ou CPF, chamados por nº ou assunto) */
+export const superSearch = (q) => unwrap(supabase.rpc('super_search', { p_q: q }))
+
+/** Linha do tempo da academia: auditoria (academia, assinatura, adicionais, faturas) + entradas do Super Admin */
+export async function academyTimeline(academyId) {
+  const [audit, access] = await Promise.all([
+    unwrap(
+      supabase
+        .from('audit_logs')
+        .select('id, acao, tabela, user_nome, dados_antes, dados_depois, created_at')
+        .eq('academy_id', academyId)
+        .in('tabela', ['academies', 'academy_addons', 'saas_invoices', 'academy_settings'])
+        .order('created_at', { ascending: false })
+        .limit(200),
+    ),
+    unwrap(
+      supabase
+        .from('access_logs')
+        .select('id, evento, user_nome, created_at')
+        .eq('academy_id', academyId)
+        .eq('evento', 'acesso_super')
+        .order('created_at', { ascending: false })
+        .limit(100),
+    ),
+  ])
+  return { audit: audit ?? [], access: access ?? [] }
+}
+
+/** Dados do próprio usuário do SaaS */
+export const updateMySuperProfile = ({ nome, email, avatar_url, alertas }) =>
+  unwrap(supabase.rpc('update_my_super_profile', { p_nome: nome, p_email: email, p_avatar_url: avatar_url, p_alertas: alertas }))
+
+/** Duplica um plano (cópia inativa, para ajustar antes de oferecer) */
+export async function duplicateSaasPlan(plan) {
+  const rest = { ...plan }
+  for (const k of ['id', 'created_at', 'updated_at', 'deleted_at', 'slug']) delete rest[k]
+  return unwrap(supabase.from('saas_plans').insert({ ...rest, nome: `${plan.nome} (cópia)`, ativo: false, destaque: false }))
+}
+
+/** Duplica uma oferta (cópia inativa) */
+export async function duplicateSaasOffer(offer) {
+  const rest = { ...offer }
+  for (const k of ['id', 'created_at', 'updated_at']) delete rest[k]
+  return unwrap(supabase.from('saas_offers').insert({ ...rest, nome: `${offer.nome} (cópia)`, ativo: false }))
 }

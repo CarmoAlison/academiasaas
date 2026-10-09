@@ -16,16 +16,9 @@ export const ANNOUNCEMENT_AUDIENCES = [
 export const listAnnouncements = () =>
   unwrap(supabase.from('announcements').select('*, academy:academies(id, nome)').order('created_at', { ascending: false }))
 
-/** Avisos vigentes para o usuário logado (a RLS filtra público, academia e período) */
-export const listActiveAnnouncements = () =>
-  unwrap(
-    supabase
-      .from('announcements')
-      .select('id, titulo, mensagem, tipo, link, academy_id, publico, inicio, fim, ativo')
-      .eq('ativo', true)
-      .order('inicio', { ascending: false })
-      .limit(10),
-  )
+/** Avisos vigentes na academia ativa (público, academia, plano, módulo e período — filtrados no banco) */
+export const listActiveAnnouncements = (academyId) =>
+  academyId ? unwrap(supabase.rpc('my_announcements', { p_academy: academyId })) : Promise.resolve([])
 
 const clean = (v) => ({
   titulo: v.titulo.trim(),
@@ -33,6 +26,8 @@ const clean = (v) => ({
   tipo: v.tipo,
   publico: v.publico,
   academy_id: v.academy_id || null,
+  planos: v.planos?.length ? v.planos : null,
+  modulo: v.modulo || null,
   link: v.link?.trim() || null,
   inicio: v.inicio ? new Date(v.inicio).toISOString() : new Date().toISOString(),
   fim: v.fim ? new Date(v.fim).toISOString() : null,

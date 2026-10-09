@@ -1,31 +1,82 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, ChevronDown, ChevronUp, Dumbbell, PlayCircle, RotateCcw } from 'lucide-react'
-import { useState } from 'react'
+import { CheckCircle2, ChevronDown, ChevronUp, Dumbbell, RotateCcw } from 'lucide-react'
+import { lazy, Suspense, useState } from 'react'
 import QueryError from '../../../components/feedback/QueryError'
-import { Badge, Button, EmptyState, PageHeader, SkeletonCard, Tabs } from '../../../components/ui'
+import { Badge, Button, EmptyState, PageHeader, SkeletonCard, Tabs, useToast } from '../../../components/ui'
 import { VideoModal } from '../../../components/video/VideoPlayer'
+import { useModules } from '../../../hooks/useModules'
 import { useMutationToast } from '../../../hooks/useMutationToast'
-import { completeDay, undoComplete } from '../../../services/workoutService'
-import { addDays, formatDate } from '../../../utils/formatters'
+import { completeDay, saveExerciseLog, undoComplete } from '../../../services/workoutService'
+import { errorMessage } from '../../../utils/errors'
+import { addDays, formatDate, toISODate } from '../../../utils/formatters'
 import { dayLabel, exercisesLabel, startOfWeek, weekPosition } from '../../../utils/workoutDays'
 import styles from '../client.module.css'
-import { useMyWeekLogs, useMyWorkouts } from '../useStudent'
+import { useMyExerciseLogs, useMyWeekLogs, useMyWorkouts, useStudentId } from '../useStudent'
+import ExerciseRow from './ExerciseRow'
+import RestTimer from './RestTimer'
+
+// gráfico (Recharts) só carrega quando o aluno abre a evolução
+const EvolucaoModal = lazy(() => import('./EvolucaoModal'))
 
 const todayDow = () => new Date().getDay()
 
 /** Data (nesta semana) em que cai o dia da ficha */
 const dateOfWeekday = (dia) => (dia == null ? null : addDays(startOfWeek(), weekPosition(dia)))
 
-function DayCard({ workout, day, log, defaultOpen }) {
+/** Marcar exercício / anotar carga com atualização imediata da tela */
+function useExerciseLog() {
+  const { studentId } = useStudentId()
+  const queryClient = useQueryClient()
+  const toast = useToast()
+  const key = ['my-exercise-logs', studentId]
+
+  return async ({ workout, item, ...patch }) => {
+    const data = toISODate()
+    const previous = queryClient.getQueryData(key)
+    queryClient.setQueryData(key, (rows = []) => {
+      const i = rows.findIndex((r) => r.workout_exercise_id === item.id && r.data === data)
+      if (i >= 0) return rows.map((r, j) => (j === i ? { ...r, ...patch } : r))
+      return [{ id: `tmp-${item.id}`, workout_exercise_id: item.id, exercise_id: item.exercise_id, data, feito: false, carga: null, ...patch }, ...rows]
+    })
+    try {
+      await saveExerciseLog({ workout, item, data, ...patch })
+      queryClient.invalidateQueries({ queryKey: key })
+      return true
+    } catch (err) {
+      queryClient.setQueryData(key, previous)
+      toast.error(errorMessage(err))
+      return false
+    }
+  }
+}
+
+function DayCard({ workout, day, log, defaultOpen, exLogs, onRest, onEvolucao }) {
+  const videos = useModules().has('videos')
   const [open, setOpen] = useState(defaultOpen)
   const [video, setVideo] = useState(null)
   const queryClient = useQueryClient()
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['my-workout-logs'] })
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['my-workout-logs'] })
+    queryClient.invalidateQueries({ queryKey: ['my-progress'] })
+  }
   const isToday = day.dia_semana === todayDow()
   const date = dateOfWeekday(day.dia_semana)
+  const saveLog = useExerciseLog()
 
   const done = useMutationToast(() => completeDay(workout, day.id), { success: 'Treino concluído! Bom trabalho 💪', onSuccess: refresh })
   const undo = useMutationToast(() => undoComplete(log.id), { success: 'Marcação desfeita', onSuccess: refresh })
+
+  const today = toISODate()
+  const todayOf = (item) => exLogs.find((l) => l.workout_exercise_id === item.id && l.data === today)
+  // última carga anotada antes de hoje (logs vêm do mais recente para o mais antigo)
+  const lastCargaOf = (item) => exLogs.find((l) => l.exercise_id === item.exercise_id && l.data < today && l.carga !== null)?.carga ?? null
+  const feitos = day.items.filter((it) => todayOf(it)?.feito).length
+
+  const toggle = async (item, feito) => {
+    const ok = await saveLog({ workout, item, feito })
+    // último exercício marcado: conclui o dia automaticamente
+    if (ok && feito && !log && feitos + 1 === day.items.length) done.mutate()
+  }
 
   return (
     <section className={`${styles.tile} ${isToday ? styles.dayToday : ''} ${log ? styles.dayDone : ''}`}>
@@ -60,32 +111,30 @@ function DayCard({ workout, day, log, defaultOpen }) {
 
       {open && (
         <>
+          {feitos > 0 && !log && (
+            <p className={styles.muted} style={{ margin: '0 0 4px' }}>
+              {feitos} de {day.items.length} exercícios feitos hoje
+            </p>
+          )}
           <div>
-            {day.items.map((it, i) => (
-              <div key={it.id} className={styles.exercise}>
-                <span className={styles.num}>{i + 1}</span>
-                <div>
-                  <strong>{it.exercise?.nome}</strong>
-                  {it.exercise?.grupo_muscular && <span className={styles.muted}> · {it.exercise.grupo_muscular}</span>}
-                  <div className={styles.specs}>
-                    {it.series && <span className={styles.spec}>{it.series} séries</span>}
-                    {it.repeticoes && <span className={styles.spec}>{it.repeticoes} reps</span>}
-                    {it.carga && <span className={styles.spec}>{it.carga}</span>}
-                    {it.descanso && <span className={styles.spec}>descanso {it.descanso}</span>}
-                  </div>
-                  {it.exercise?.instrucoes && (
-                    <p className={styles.muted} style={{ marginTop: 6 }}>
-                      {it.exercise.instrucoes}
-                    </p>
-                  )}
-                  {it.exercise?.video_url && (
-                    <button type="button" className={styles.video} onClick={() => setVideo(it.exercise)}>
-                      <PlayCircle size={16} /> Ver vídeo
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+            {day.items.map((it, i) => {
+              const tl = todayOf(it)
+              return (
+                <ExerciseRow
+                  key={`${it.id}-${tl?.carga ?? ''}`}
+                  item={it}
+                  index={i}
+                  todayLog={tl}
+                  lastCarga={lastCargaOf(it)}
+                  showVideo={videos}
+                  onToggle={(feito) => toggle(it, feito)}
+                  onCarga={(carga) => saveLog({ workout, item: it, carga })}
+                  onRest={onRest}
+                  onEvolucao={() => onEvolucao({ id: it.exercise_id, nome: it.exercise?.nome })}
+                  onVideo={() => setVideo(it.exercise)}
+                />
+              )
+            })}
           </div>
           {log ? (
             <div className={styles.doneRow}>
@@ -109,7 +158,7 @@ function DayCard({ workout, day, log, defaultOpen }) {
   )
 }
 
-function WeekPlan({ workout, logs }) {
+function WeekPlan({ workout, logs, exLogs, onRest, onEvolucao }) {
   const doneByDay = new Map()
   logs.filter((l) => l.workout_id === workout.id && l.day_id).forEach((l) => !doneByDay.has(l.day_id) && doneByDay.set(l.day_id, l))
   const total = workout.days.length
@@ -150,7 +199,16 @@ function WeekPlan({ workout, logs }) {
       </section>
 
       {workout.days.map((day) => (
-        <DayCard key={day.id} workout={workout} day={day} log={doneByDay.get(day.id)} defaultOpen={day.id === openId} />
+        <DayCard
+          key={day.id}
+          workout={workout}
+          day={day}
+          log={doneByDay.get(day.id)}
+          defaultOpen={day.id === openId}
+          exLogs={exLogs}
+          onRest={onRest}
+          onEvolucao={onEvolucao}
+        />
       ))}
     </div>
   )
@@ -159,6 +217,9 @@ function WeekPlan({ workout, logs }) {
 export default function Treinos() {
   const workouts = useMyWorkouts()
   const logs = useMyWeekLogs()
+  const exLogs = useMyExerciseLogs()
+  const [timer, setTimer] = useState(null)
+  const [evolucao, setEvolucao] = useState(null)
   const [selected, setSelected] = useState(null)
 
   if (workouts.isError) return <QueryError error={workouts.error} onRetry={workouts.refetch} />
@@ -168,7 +229,7 @@ export default function Treinos() {
 
   return (
     <>
-      <PageHeader title="Meus treinos" subtitle="Seu treino da semana. Marque cada dia ao terminar." />
+      <PageHeader title="Meus treinos" subtitle="Marque cada exercício, anote a carga e acompanhe sua evolução." />
       {workouts.isPending ? (
         <div className={styles.stack}>
           <SkeletonCard />
@@ -179,8 +240,21 @@ export default function Treinos() {
       ) : (
         <>
           {list.length > 1 && <Tabs items={list.map((w) => ({ key: w.id, label: w.nome }))} value={current.id} onChange={setSelected} />}
-          <WeekPlan key={current.id} workout={current} logs={logs.data ?? []} />
+          <WeekPlan
+            key={current.id}
+            workout={current}
+            logs={logs.data ?? []}
+            exLogs={exLogs.data ?? []}
+            onRest={(seconds, label) => setTimer({ seconds, label, key: Date.now() })}
+            onEvolucao={setEvolucao}
+          />
         </>
+      )}
+      {timer && <RestTimer key={timer.key} seconds={timer.seconds} label={timer.label} onClose={() => setTimer(null)} />}
+      {evolucao && (
+        <Suspense fallback={null}>
+          <EvolucaoModal exercise={evolucao} logs={exLogs.data ?? []} onClose={() => setEvolucao(null)} />
+        </Suspense>
       )}
     </>
   )

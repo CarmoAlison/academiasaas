@@ -10,6 +10,7 @@ import { useSupportRealtime } from '../../../hooks/useSupportRealtime'
 import { useTheme } from '../../../hooks/useTheme'
 import { getSettings } from '../../../services/saasService'
 import { unreadTickets } from '../../../services/supportService'
+import SuperSearch from './SuperSearch'
 
 /** `area`: permissão do papel necessária (ver useSuperRole); sem área = todos */
 const GROUPS = [
@@ -79,10 +80,13 @@ export default function SuperAdminLayout() {
       topbarRight={
         <>
           <ThemeToggle />
-          <UserMenu name={admin?.nome} subtitle={label} compact />
+          <UserMenu name={admin?.nome} subtitle={label} avatarUrl={admin?.avatar_url} profilePath="/super-admin/perfil" compact />
         </>
       }
-      sidebarFooter={(collapsed) => <UserMenu name={admin?.nome} subtitle={label} compact={collapsed} placement="top" />}
+      sidebarFooter={(collapsed) => (
+        <UserMenu name={admin?.nome} subtitle={label} avatarUrl={admin?.avatar_url} profilePath="/super-admin/perfil" compact={collapsed} placement="top" />
+      )}
+      banner={<SuperSearch />}
     />
   )
 }

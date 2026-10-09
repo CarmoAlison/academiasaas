@@ -3,24 +3,25 @@ import { CheckCircle2, ChevronRight, Circle, Rocket, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button, Card } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
+import { useModules } from '../../../hooks/useModules'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { onboardingStatus, updateAcademySettings } from '../../../services/academySettingsService'
 import { ADMIN_ONLY } from '../layout/adminNav'
 import styles from './Onboarding.module.css'
 
-const STEPS = [
-  { key: 'identidade', label: 'Coloque o logo e a cor da academia', to: '/admin/configuracoes' },
+const ALL_STEPS = [
+  { key: 'identidade', label: 'Coloque o logo e a cor da academia', to: '/admin/configuracoes?tab=identidade', module: 'identidade' },
   { key: 'unidades', label: 'Cadastre a unidade (endereço e contato)', to: '/admin/unidades/nova' },
   { key: 'planos', label: 'Crie os planos (mensal, trimestral…)', to: '/admin/planos/novo' },
   { key: 'equipe', label: 'Adicione a equipe (instrutores, recepção)', to: '/admin/perfil-acesso' },
-  { key: 'recibo', label: 'Personalize o recibo', to: '/admin/financeiro/recibo' },
-  { key: 'contrato', label: 'Revise o modelo de contrato', to: '/admin/configuracoes' },
+  { key: 'recibo', label: 'Personalize o recibo', to: '/admin/financeiro/recibo', module: 'financeiro' },
+  { key: 'contrato', label: 'Revise o modelo de contrato', to: '/admin/configuracoes?tab=contrato', module: 'contratos' },
   { key: 'alunos', label: 'Cadastre o primeiro aluno', to: '/admin/alunos/novo' },
-  { key: 'exercicios', label: 'Monte a biblioteca de exercícios', to: '/admin/treinos' },
-  { key: 'treinos', label: 'Crie o primeiro treino', to: '/admin/treinos/novo' },
-  { key: 'aulas', label: 'Cadastre as aulas coletivas', to: '/admin/aulas/nova' },
-  { key: 'checkin', label: 'Deixe o QR Code de check-in na recepção', to: '/admin/checkin' },
+  { key: 'exercicios', label: 'Monte a biblioteca de exercícios', to: '/admin/treinos', module: 'treinos' },
+  { key: 'treinos', label: 'Crie o primeiro treino', to: '/admin/treinos/novo', module: 'treinos' },
+  { key: 'aulas', label: 'Cadastre as aulas coletivas', to: '/admin/aulas/nova', module: 'aulas' },
+  { key: 'checkin', label: 'Deixe o QR Code de check-in na recepção', to: '/admin/checkin', module: 'checkin' },
 ]
 
 /** Checklist de primeiro acesso (só o perfil Admin vê) */
@@ -28,6 +29,7 @@ export default function Onboarding() {
   const { academyId } = useTenant()
   const { can } = usePermissions()
   const isAdmin = can(ADMIN_ONLY)
+  const mod = useModules()
   const query = useQuery({ queryKey: ['onboarding', academyId], queryFn: () => onboardingStatus(academyId), enabled: isAdmin })
   const hide = useMutationToast(() => updateAcademySettings(academyId, { onboarding_oculto: true }), {
     success: 'Checklist ocultado. Você encontra tudo pelo menu.',
@@ -35,6 +37,7 @@ export default function Onboarding() {
   })
 
   const s = query.data
+  const STEPS = ALL_STEPS.filter((st) => mod.has(st.module))
   if (!isAdmin || !s || s.oculto) return null
   const done = STEPS.filter((st) => s[st.key]).length
   if (done === STEPS.length) return null

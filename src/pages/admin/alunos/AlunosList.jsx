@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
-import { Download, Plus } from 'lucide-react'
+import { Download, Plus, Upload } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import QueryError from '../../../components/feedback/QueryError'
 import { Avatar, Badge, Button, DataTable, PageHeader, Select, StatusBadge, useToast } from '../../../components/ui'
 import { useTenant } from '../../../hooks/useAuth'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { useServerTable } from '../../../hooks/useServerTable'
+import ImportarAlunos from './ImportarAlunos'
 import { planService, unitService } from '../../../services/catalogServices'
 import { exportStudents, listStudentsPage } from '../../../services/studentService'
 import { STUDENT_STATUS } from '../../../utils/constants'
@@ -21,13 +22,15 @@ export default function AlunosList() {
   const toast = useToast()
   const [exporting, setExporting] = useState(false)
   const today = toISODate()
+  const [searchParams] = useSearchParams()
+  const [importOpen, setImportOpen] = useState(false)
 
   // paginação, busca, ordenação e filtros no servidor
   const { query, tableProps, filters, setFilter, search } = useServerTable({
     queryKey: ['students', academyId],
     fetchPage: (params) => listStudentsPage(academyId, params),
     pageSize: 20,
-    initialFilters: { status: '', plan_id: '', unit_id: '' },
+    initialFilters: { status: searchParams.get('status') ?? '', plan_id: '', unit_id: '' },
   })
   const plans = useQuery({ queryKey: ['plans', academyId], queryFn: () => planService.list(academyId) })
   const units = useQuery({ queryKey: ['units', academyId], queryFn: () => unitService.list(academyId) })
@@ -68,6 +71,11 @@ export default function AlunosList() {
               Exportar
             </Button>
             {can('alunos.criar') && (
+              <Button variant="outline" icon={Upload} onClick={() => setImportOpen(true)}>
+                Importar planilha
+              </Button>
+            )}
+            {can('alunos.criar') && (
               <Button icon={Plus} to="/admin/alunos/novo">
                 Novo aluno
               </Button>
@@ -90,6 +98,8 @@ export default function AlunosList() {
                 ...STUDENT_STATUS,
                 { value: 'inadimplente', label: 'Inadimplentes' },
                 { value: 'plano_vencido', label: 'Plano vencido' },
+                { value: 'plano_vencendo', label: 'Plano vence em 7 dias' },
+                { value: 'aniversariantes', label: 'Aniversariantes do mês' },
               ]}
             />
             <Select
@@ -154,6 +164,7 @@ export default function AlunosList() {
           },
         ]}
       />
+      {importOpen && <ImportarAlunos onClose={() => setImportOpen(false)} />}
     </>
   )
 }

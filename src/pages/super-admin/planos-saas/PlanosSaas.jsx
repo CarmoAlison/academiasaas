@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { Check, Pencil, Plus, Star, Trash2 } from 'lucide-react'
+import { Check, Copy, Pencil, Plus, Star, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import QueryError from '../../../components/feedback/QueryError'
 import {
   Badge,
   Button,
+  Checkbox,
   DataTable,
   FormGrid,
   FullRow,
@@ -17,11 +18,14 @@ import {
   Switch,
   Tabs,
   Textarea,
+  Tooltip,
   useConfirm,
 } from '../../../components/ui'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import {
+  duplicateSaasOffer,
+  duplicateSaasPlan,
   listSaasAddons,
   listSaasOffers,
   listSaasPlans,
@@ -32,6 +36,7 @@ import {
   saveSaasOffer,
   saveSaasPlan,
 } from '../../../services/saasService'
+import { listModules, saveModule } from '../../../services/moduleService'
 import { UFS } from '../../../utils/constants'
 import { formatCurrency, formatDate, toISODate } from '../../../utils/formatters'
 import { annualMonthly } from '../../../utils/saasPricing'
@@ -54,6 +59,37 @@ const EMPTY_PLAN = {
   destaque: false,
   ordem: '0',
   ativo: true,
+  modulos_todos: true,
+  modulos: [],
+}
+
+/** Módulos incluídos no plano (essenciais sempre entram) */
+function PlanModulesField({ all, selected, onChange }) {
+  const modules = useQuery({ queryKey: ['saas-modules'], queryFn: listModules })
+  const optional = (modules.data ?? []).filter((m) => m.ativo && !m.essencial)
+  return (
+    <div className={styles.modField}>
+      <span className={styles.modTitle}>Módulos incluídos</span>
+      <Switch
+        label="Todos os módulos (inclusive os que forem criados depois)"
+        checked={all}
+        onChange={(v) => onChange(v, v ? selected : optional.map((m) => m.slug))}
+      />
+      {!all && (
+        <div className={styles.modGrid}>
+          {optional.map((m) => (
+            <Checkbox
+              key={m.slug}
+              label={m.nome}
+              checked={selected.includes(m.slug)}
+              onChange={(on) => onChange(false, on ? [...selected, m.slug] : selected.filter((s) => s !== m.slug))}
+            />
+          ))}
+        </div>
+      )}
+      <small className="text-muted">Os essenciais (alunos, cadastros e dashboard) estão sempre incluídos. Dá para ajustar cada academia pelo ícone ⚙ na lista de academias.</small>
+    </div>
+  )
 }
 
 function PlanModal({ plan, onClose }) {
@@ -68,6 +104,8 @@ function PlanModal({ plan, onClose }) {
           desconto_anual_pct: String(plan.desconto_anual_pct ?? 0),
           recursos: (plan.recursos ?? []).join('\n'),
           ordem: String(plan.ordem ?? 0),
+          modulos_todos: plan.modulos == null,
+          modulos: plan.modulos ?? [],
         }
       : EMPTY_PLAN,
     { nome: [rules.required()], valor: [rules.required(), rules.min(0)], desconto_anual_pct: [pctRule(90)] },
@@ -118,6 +156,16 @@ function PlanModal({ plan, onClose }) {
           <FullRow>
             <Textarea label="O que está incluso" rows={5} hint="Um item por linha (aparece no cartão do plano)" {...field('recursos')} />
           </FullRow>
+          <FullRow>
+            <PlanModulesField
+              all={values.modulos_todos}
+              selected={values.modulos}
+              onChange={(all, selected) => {
+                setValue('modulos_todos', all)
+                setValue('modulos', selected)
+              }}
+            />
+          </FullRow>
           <Switch label="Destacar como “Mais vendido”" checked={values.destaque} onChange={(v) => setValue('destaque', v)} />
           <Switch label="Plano ativo (disponível para novas academias)" checked={values.ativo} onChange={(v) => setValue('ativo', v)} />
         </FormGrid>
@@ -131,6 +179,7 @@ function PlansTab() {
   const [confirm, confirmDialog] = useConfirm()
   const query = useQuery({ queryKey: ['saas-plans'], queryFn: listSaasPlans })
   const remove = useMutationToast(removeSaasPlan, { success: 'Plano removido', invalidate: [['saas-plans']] })
+  const duplicate = useMutationToast(duplicateSaasPlan, { success: 'Plano duplicado (inativo, ajuste e ative)', invalidate: [['saas-plans']] })
 
   if (query.isError) return <QueryError error={query.error} onRetry={query.refetch} />
 
@@ -174,6 +223,9 @@ function PlansTab() {
                 <li>
                   <Check size={14} /> {p.limite_unidades ? `${p.limite_unidades} unidade(s)` : 'Unidades ilimitadas'}
                 </li>
+                <li>
+                  <Check size={14} /> {p.modulos == null ? 'Todos os módulos' : `${p.modulos.length} módulo(s) opcional(is) + essenciais`}
+                </li>
                 {(p.recursos ?? []).map((r) => (
                   <li key={r}>
                     <Check size={14} /> {r}
@@ -183,6 +235,9 @@ function PlansTab() {
               <footer>
                 <Button variant="outline" size="sm" icon={Pencil} onClick={() => setEditing(p)}>
                   Editar
+                </Button>
+                <Button variant="ghost" size="sm" icon={Copy} loading={duplicate.isPending && duplicate.variables?.id === p.id} onClick={() => duplicate.mutate(p)}>
+                  Duplicar
                 </Button>
                 <Button
                   variant="ghost"
@@ -371,6 +426,7 @@ function OffersTab() {
   const query = useQuery({ queryKey: ['saas-offers'], queryFn: listSaasOffers })
   const usage = useQuery({ queryKey: ['saas-offers', 'usage'], queryFn: offerUsage })
   const remove = useMutationToast(removeSaasOffer, { success: 'Oferta excluída', invalidate: [['saas-offers']] })
+  const duplicate = useMutationToast(duplicateSaasOffer, { success: 'Oferta duplicada (inativa, ajuste e ative)', invalidate: [['saas-offers']] })
   if (query.isError) return <QueryError error={query.error} onRetry={query.refetch} />
   const hoje = toISODate()
 
@@ -438,6 +494,9 @@ function OffersTab() {
             render: (o) => (
               <div style={{ display: 'inline-flex', gap: 4 }}>
                 <Button variant="ghost" size="sm" icon={Pencil} aria-label="Editar" onClick={() => setEditing(o)} />
+                <Tooltip content="Duplicar">
+                  <Button variant="ghost" size="sm" icon={Copy} aria-label="Duplicar" onClick={() => duplicate.mutate(o)} />
+                </Tooltip>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -472,10 +531,131 @@ function OffersTab() {
   )
 }
 
+// ---------------------------------------------------------------------
+// Módulos (catálogo)
+// ---------------------------------------------------------------------
+const GRUPOS = [
+  { value: 'gestao', label: 'Gestão' },
+  { value: 'aluno', label: 'Área do aluno' },
+  { value: 'ambos', label: 'Gestão e área do aluno' },
+]
+
+function ModuleModal({ module, onClose }) {
+  const isNew = !module
+  const { field, values, setValue, handleSubmit } = useForm(
+    {
+      slug: module?.slug ?? '',
+      nome: module?.nome ?? '',
+      descricao: module?.descricao ?? '',
+      grupo: module?.grupo ?? 'gestao',
+      ordem: String(module?.ordem ?? 100),
+      ativo: module?.ativo ?? true,
+    },
+    {
+      nome: [rules.required()],
+      slug: isNew ? [rules.required(), (v) => (/^[a-z0-9_]{2,40}$/.test(v) ? undefined : 'Use só letras minúsculas, números e _')] : [],
+    },
+  )
+  const mutation = useMutationToast((v) => saveModule(module?.slug, v, isNew), {
+    success: isNew ? 'Módulo criado' : 'Módulo atualizado',
+    invalidate: [['saas-modules']],
+    onSuccess: onClose,
+  })
+  const submit = handleSubmit((v) => mutation.mutate(v))
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={isNew ? 'Novo módulo' : `Editar módulo — ${module.nome}`}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} loading={mutation.isPending}>
+            Salvar
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={submit} noValidate>
+        <FormGrid columns={2}>
+          <Input label="Nome" required {...field('nome')} />
+          <Input label="Código" required={isNew} disabled={!isNew} placeholder="ex.: nutricao" hint="Identificador fixo, sem espaços" {...field('slug')} />
+          <Select label="Onde aparece" options={GRUPOS} {...field('grupo')} />
+          <Input label="Ordem" type="number" {...field('ordem')} />
+          <FullRow>
+            <Textarea label="Descrição" rows={2} {...field('descricao')} />
+          </FullRow>
+          <Switch label="Módulo ativo no catálogo" checked={values.ativo} onChange={(v) => setValue('ativo', v)} />
+        </FormGrid>
+        {isNew && (
+          <p className="text-muted" style={{ fontSize: 12, marginTop: 12 }}>
+            Um módulo novo começa desligado nos planos com lista de módulos e ligado nos planos com “Todos os módulos”. Para ele ter efeito
+            nas telas, a funcionalidade correspondente precisa existir no sistema.
+          </p>
+        )}
+      </form>
+    </Modal>
+  )
+}
+
+function ModulesTab() {
+  const [editing, setEditing] = useState(null)
+  const query = useQuery({ queryKey: ['saas-modules'], queryFn: listModules })
+  if (query.isError) return <QueryError error={query.error} onRetry={query.refetch} />
+  return (
+    <>
+      <DataTable
+        loading={query.isPending}
+        data={(query.data ?? []).map((m) => ({ ...m, id: m.slug }))}
+        searchKeys={['nome', 'descricao', 'slug']}
+        searchPlaceholder="Buscar módulo"
+        actions={
+          <Button icon={Plus} onClick={() => setEditing({})}>
+            Novo módulo
+          </Button>
+        }
+        columns={[
+          {
+            key: 'nome',
+            header: 'Módulo',
+            render: (m) => (
+              <>
+                <strong>{m.nome}</strong>
+                {m.descricao && <div className="text-muted" style={{ fontSize: 12 }}>{m.descricao}</div>}
+              </>
+            ),
+          },
+          { key: 'grupo', header: 'Onde aparece', render: (m) => GRUPOS.find((g) => g.value === m.grupo)?.label },
+          {
+            key: 'ativo',
+            header: 'Tipo',
+            render: (m) =>
+              m.essencial ? <Badge>Essencial</Badge> : <Badge tone={m.ativo ? 'success' : 'neutral'}>{m.ativo ? 'Opcional' : 'Inativo'}</Badge>,
+          },
+          {
+            key: 'acoes',
+            header: '',
+            sortable: false,
+            align: 'right',
+            render: (m) => <Button variant="ghost" size="sm" icon={Pencil} aria-label="Editar" onClick={() => setEditing(m)} />,
+          },
+        ]}
+      />
+      <p className="text-muted" style={{ fontSize: 12, marginTop: 12 }}>
+        Defina quais módulos cada plano inclui em Planos → Editar. Para liberar ou bloquear algo só para uma academia, use o ícone ⚙ na lista de academias.
+      </p>
+      {editing && <ModuleModal module={editing.slug ? editing : null} onClose={() => setEditing(null)} />}
+    </>
+  )
+}
+
 const TABS = [
   { key: 'planos', label: 'Planos' },
   { key: 'adicionais', label: 'Adicionais' },
   { key: 'ofertas', label: 'Ofertas' },
+  { key: 'modulos', label: 'Módulos' },
 ]
 
 export default function PlanosSaas() {
@@ -489,6 +669,7 @@ export default function PlanosSaas() {
         {tab === 'planos' && <PlansTab />}
         {tab === 'adicionais' && <AddonsTab />}
         {tab === 'ofertas' && <OffersTab />}
+        {tab === 'modulos' && <ModulesTab />}
       </div>
     </>
   )

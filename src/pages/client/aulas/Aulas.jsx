@@ -4,6 +4,7 @@ import { useState } from 'react'
 import QueryError from '../../../components/feedback/QueryError'
 import { Badge, Button, EmptyState, PageHeader, SkeletonCard } from '../../../components/ui'
 import { useMutationToast } from '../../../hooks/useMutationToast'
+import { useModules } from '../../../hooks/useModules'
 import { classService } from '../../../services/classService'
 import { addDays, formatTime, toISODate } from '../../../utils/formatters'
 import DelinquencyBanner from '../DelinquencyBanner'
@@ -16,6 +17,7 @@ const classStart = (c) => new Date(`${c.data}T${c.horario.slice(0, 5)}:00`)
 export default function Aulas() {
   const [start, setStart] = useState(() => weekStart())
   const week = useWeekSchedule(start)
+  const { has } = useModules()
   const settings = useAcademySettings().data
   const queryClient = useQueryClient()
   const today = toISODate()
@@ -118,7 +120,7 @@ export default function Aulas() {
   return (
     <>
       <PageHeader title="Aulas" subtitle="Reserve sua vaga nas aulas coletivas" />
-      <DelinquencyBanner context="aulas" />
+      {has('financeiro') && <DelinquencyBanner context="aulas" />}
       {rules.length > 0 && (
         <p className={styles.muted} style={{ marginBottom: 16 }}>
           {rules.join(' ')}

@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { CheckCheck, MessageCircle, Settings } from 'lucide-react'
+import { CheckCheck, MessageCircle, Send, Settings } from 'lucide-react'
 import { useState } from 'react'
 import QueryError from '../../../components/feedback/QueryError'
+import BatchChargeModal from '../../../components/whatsapp/BatchChargeModal'
 import { Badge, Button, DataTable, PageHeader, Tabs } from '../../../components/ui'
 import { useAcademySettings } from '../../../hooks/useAcademySettings'
 import { useTenant } from '../../../hooks/useAuth'
@@ -31,6 +32,7 @@ export default function WhatsappPanel() {
   const settings = useAcademySettings().data
   const send = useWhatsappSend()
   const [tipo, setTipo] = useState('lembrete')
+  const [batchOpen, setBatchOpen] = useState(false)
 
   const diasLembrete = settings?.whatsapp_dias_lembrete ?? 3
   const hoje = toISODate()
@@ -53,7 +55,7 @@ export default function WhatsappPanel() {
 
   if (query.isError) return <QueryError error={query.error} onRetry={query.refetch} />
 
-  const message = (p) => fillTemplate(templateFor(settings, tipo), paymentVars(p, academy?.nome ?? ''))
+  const message = (p) => fillTemplate(templateFor(settings, tipo), paymentVars(p, academy?.nome ?? '', settings))
 
   return (
     <>
@@ -61,13 +63,19 @@ export default function WhatsappPanel() {
         title="WhatsApp"
         subtitle="Lembretes, avisos de atraso e recibos com mensagem pronta"
         actions={
-          can(ADMIN_ONLY) && (
-            <Button variant="outline" icon={Settings} to="/admin/configuracoes">
-              Editar mensagens
+          <>
+            {can(ADMIN_ONLY) && (
+              <Button variant="outline" icon={Settings} to="/admin/configuracoes?tab=mensagens">
+                Editar mensagens
+              </Button>
+            )}
+            <Button icon={Send} onClick={() => setBatchOpen(true)}>
+              Cobrar atrasados em lote
             </Button>
-          )
+          </>
         }
       />
+      {batchOpen && <BatchChargeModal onClose={() => setBatchOpen(false)} />}
       <Tabs items={TABS} value={tipo} onChange={setTipo} />
       <p className="text-muted" style={{ margin: '16px 0' }}>
         {DESCRIPTIONS[tipo](diasLembrete)} Ao clicar em <strong>Enviar</strong>, o WhatsApp abre com a mensagem pronta para o aluno.

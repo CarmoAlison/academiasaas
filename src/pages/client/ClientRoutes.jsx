@@ -1,5 +1,6 @@
 import { lazy } from 'react'
 import { Navigate, Route } from 'react-router-dom'
+import ModuleGuard from '../../routes/ModuleGuard'
 import ClientLayout from './layout/ClientLayout'
 
 const Dashboard = lazy(() => import('./dashboard/Dashboard'))
@@ -15,11 +16,11 @@ export const clientRoutes = (
   <Route path="/client" element={<ClientLayout />}>
     <Route index element={<Navigate to="dashboard" replace />} />
     <Route path="dashboard" element={<Dashboard />} />
-    <Route path="treinos" element={<Treinos />} />
-    <Route path="aulas" element={<Aulas />} />
-    <Route path="financeiro" element={<Financeiro />} />
+    <Route path="treinos" element={<ModuleGuard module="treinos"><Treinos /></ModuleGuard>} />
+    <Route path="aulas" element={<ModuleGuard module="aulas"><Aulas /></ModuleGuard>} />
+    <Route path="financeiro" element={<ModuleGuard module="financeiro"><Financeiro /></ModuleGuard>} />
     <Route path="perfil" element={<Perfil />} />
-    <Route path="checkin" element={<Checkin />} />
-    <Route path="contrato" element={<Contratos />} />
+    <Route path="checkin" element={<ModuleGuard module="checkin"><Checkin /></ModuleGuard>} />
+    <Route path="contrato" element={<ModuleGuard module="contratos"><Contratos /></ModuleGuard>} />
   </Route>
 )

@@ -1,0 +1,59 @@
+.timeline {
+  position: relative;
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 17px;
+  width: 2px;
+  background: var(--color-border);
+}
+
+.timeline li {
+  position: relative;
+  display: flex;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.dot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.ok .dot {
+  background: var(--color-success-light);
+  color: var(--color-success-text);
+}
+
+.bad .dot {
+  background: var(--color-danger-light);
+  color: var(--color-danger-text);
+}
+
+.timeline p {
+  margin: 3px 0 0;
+  font-size: var(--fs-14);
+  overflow-wrap: anywhere;
+}
+
+.timeline small {
+  color: var(--color-text-muted);
+  font-size: var(--fs-12);
+}

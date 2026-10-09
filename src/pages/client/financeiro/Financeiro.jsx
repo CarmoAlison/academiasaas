@@ -4,13 +4,16 @@ import QueryError from '../../../components/feedback/QueryError'
 import ReceiptModal from '../../../components/receipt/ReceiptModal'
 import { Button, EmptyState, PageHeader, SkeletonCard, StatusBadge } from '../../../components/ui'
 import { PAYMENT_METHODS } from '../../../utils/constants'
+import { calcEncargos } from '../../../utils/cobranca'
 import { formatCurrency, formatDate, paymentStatus } from '../../../utils/formatters'
 import DelinquencyBanner from '../DelinquencyBanner'
 import styles from '../client.module.css'
-import { useMyPayments } from '../useStudent'
+import { useAcademySettings, useMyPayments } from '../useStudent'
+import PixBox from './PixBox'
 
 export default function Financeiro() {
   const payments = useMyPayments()
+  const settings = useAcademySettings().data
   const [receiptFor, setReceiptFor] = useState(null)
 
   if (payments.isError) return <QueryError error={payments.error} onRetry={payments.refetch} />
@@ -40,7 +43,8 @@ export default function Financeiro() {
                 </span>
                 {overdue.length > 0 && (
                   <span>
-                    ⚠️ Você tem {overdue.length} parcela(s) em atraso ({formatCurrency(overdue.reduce((a, p) => a + Number(p.valor), 0))}). Procure a recepção.
+                    ⚠️ Você tem {overdue.length} parcela(s) em atraso ({formatCurrency(overdue.reduce((a, p) => a + calcEncargos(p, settings).total, 0))}
+                    {overdue.some((p) => calcEncargos(p, settings).encargos > 0) ? ' com multa e juros' : ''}). Procure a recepção.
                   </span>
                 )}
               </>
@@ -48,6 +52,8 @@ export default function Financeiro() {
               <span className={styles.muted}>Nenhuma cobrança pendente. Tudo em dia! ✅</span>
             )}
           </section>
+
+          {next && <PixBox settings={settings} />}
 
           <h2 style={{ fontSize: 16, marginTop: 8 }}>Histórico</h2>
           {!list.length ? (
@@ -62,6 +68,9 @@ export default function Financeiro() {
                       {p.descricao ?? 'Mensalidade'}
                       {p.plan?.nome ? ` · ${p.plan.nome}` : ''} · venc. {formatDate(p.vencimento)}
                     </div>
+                    {paymentStatus(p) === 'atrasado' && calcEncargos(p, settings).encargos > 0 && (
+                      <div className={styles.muted}>Com multa e juros, hoje: {formatCurrency(calcEncargos(p, settings).total)}</div>
+                    )}
                     {p.pago_em && (
                       <div className={styles.muted}>
                         Pago em {formatDate(p.pago_em)}

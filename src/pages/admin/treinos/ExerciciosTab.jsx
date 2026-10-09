@@ -6,6 +6,7 @@ import { Button, DataTable, FormGrid, FullRow, Input, Modal, Select, Textarea, u
 import VideoPlayer, { VideoModal } from '../../../components/video/VideoPlayer'
 import { useTenant } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
+import { useModules } from '../../../hooks/useModules'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { exerciseService, uploadExerciseVideo } from '../../../services/catalogServices'
@@ -21,6 +22,7 @@ const EMPTY = { nome: '', grupo_muscular: '', video_url: '', instrucoes: '' }
  * @param {{ exercise?: object|null, onClose: () => void, onSaved?: (id: string) => void }} props
  */
 export function ExerciseModal({ exercise, onClose, onSaved }) {
+  const videos = useModules().has('videos')
   const { academyId } = useTenant()
   const toast = useToast()
   const [uploading, setUploading] = useState(false)
@@ -82,6 +84,7 @@ export function ExerciseModal({ exercise, onClose, onSaved }) {
         <FormGrid columns={2}>
           <Input label="Nome" required {...field('nome')} />
           <Select label="Grupo muscular" placeholder="Selecione" options={MUSCLE_GROUPS.map((g) => ({ value: g, label: g }))} {...field('grupo_muscular')} />
+          {videos && (
           <FullRow>
             <Input
               label="Vídeo"
@@ -107,6 +110,7 @@ export function ExerciseModal({ exercise, onClose, onSaved }) {
               </div>
             )}
           </FullRow>
+          )}
           <FullRow>
             <Textarea label="Instruções de execução" {...field('instrucoes')} />
           </FullRow>
@@ -117,6 +121,7 @@ export function ExerciseModal({ exercise, onClose, onSaved }) {
 }
 
 export default function ExerciciosTab() {
+  const videos = useModules().has('videos')
   const { academyId } = useTenant()
   const { can } = usePermissions()
   const [editing, setEditing] = useState(null)
@@ -150,7 +155,7 @@ export default function ExerciciosTab() {
         columns={[
           { key: 'nome', header: 'Exercício', render: (e) => <strong>{e.nome}</strong> },
           { key: 'grupo_muscular', header: 'Grupo muscular', render: (e) => e.grupo_muscular ?? '—' },
-          {
+          videos && {
             key: 'video_url',
             header: 'Vídeo',
             sortable: false,
@@ -187,7 +192,7 @@ export default function ExerciciosTab() {
               </div>
             ),
           },
-        ]}
+        ].filter(Boolean)}
       />
       {editing && <ExerciseModal exercise={editing.id ? editing : null} onClose={() => setEditing(null)} />}
       <VideoModal url={watching?.video_url} title={watching?.nome} onClose={() => setWatching(null)} />

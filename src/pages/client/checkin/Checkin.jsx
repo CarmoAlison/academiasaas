@@ -63,6 +63,7 @@ export default function Checkin() {
     onSuccess: (result) => {
       setState({ status: 'ok', result })
       queryClient.invalidateQueries({ queryKey: ['my-checkins'] })
+      queryClient.invalidateQueries({ queryKey: ['my-progress'] })
     },
     onError: (err) => setState({ status: 'error', message: errorMessage(err) }),
   })

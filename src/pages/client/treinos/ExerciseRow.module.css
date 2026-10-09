@@ -1,0 +1,110 @@
+.row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.row:first-child {
+  border-top: none;
+}
+
+.check {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--color-primary);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-primary-dark);
+  font-size: var(--fs-12);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+  transition: background var(--transition), transform 0.1s ease;
+}
+
+.check:active {
+  transform: scale(0.92);
+}
+
+.feito .check {
+  border-color: var(--color-success);
+  background: var(--color-success);
+  color: var(--color-white);
+}
+
+.feito .name {
+  text-decoration: line-through;
+  text-decoration-color: var(--color-success);
+}
+
+.body {
+  min-width: 0;
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 4px;
+}
+
+.kg {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.kg:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.kgErro {
+  border-color: var(--color-danger);
+}
+
+.kg input {
+  width: 64px;
+  height: 100%;
+  padding: 0 8px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: right;
+}
+
+.kg span {
+  padding: 0 8px 0 2px;
+  color: var(--color-text-muted);
+  font-size: var(--fs-12);
+}
+
+.tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font: inherit;
+  font-size: var(--fs-12);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.tool:hover {
+  background: var(--color-primary-light);
+}

@@ -4,9 +4,7 @@ import { useEffect } from 'react'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
 import QueryError from '../../../components/feedback/QueryError'
 import LogoPicker from '../../../components/brand/LogoPicker'
-import ProfileCard from '../../../components/profile/ProfileCard'
 import { Button, Card, FormActions, FormGrid, FormSection, FullRow, Input, PageHeader, Select, Switch, useConfirm } from '../../../components/ui'
-import { useAuth } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { getSettings, purgeOldLogs, saveSettings } from '../../../services/saasService'
@@ -182,12 +180,11 @@ function SettingsForm({ initial }) {
 }
 
 export default function Configuracoes() {
-  const { context } = useAuth()
   const query = useQuery({ queryKey: ['saas-settings'], queryFn: getSettings })
 
   return (
     <>
-      <PageHeader title="Configurações" subtitle="Dados do SaaS, integrações e sua conta" />
+      <PageHeader title="Configurações" subtitle="Dados do SaaS, logo e integrações (sua conta fica em Meu perfil)" />
       <Card>
         {query.isPending ? (
           <PageLoader />
@@ -197,8 +194,6 @@ export default function Configuracoes() {
           <SettingsForm initial={query.data} />
         )}
       </Card>
-      <h2 style={{ margin: '32px 0 16px' }}>Minha conta</h2>
-      {context?.super_admin && <ProfileCard superAdmin={context.super_admin} />}
     </>
   )
 }

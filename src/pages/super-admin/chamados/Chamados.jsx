@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, LifeBuoy, LogIn } from 'lucide-react'
+import { ArrowLeft, LifeBuoy, LogIn, MessageSquareText } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import QueryError from '../../../components/feedback/QueryError'
@@ -11,7 +11,10 @@ import { useTenant } from '../../../hooks/useAuth'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { patchTicketInCache } from '../../../hooks/useSupportRealtime'
 import { useSuperRole } from '../../../hooks/useSuperRole'
-import { listTickets, setTicketStatus, TICKET_STATUS } from '../../../services/supportService'
+import { logAccess } from '../../../services/logService'
+import { listMacros, listTickets, setTicketStatus, TICKET_STATUS } from '../../../services/supportService'
+import MacrosModal from './MacrosModal'
+import TicketAcademyInfo from './TicketAcademyInfo'
 
 const FILTERS = [
   { key: 'abertos', label: 'Em aberto' },
@@ -30,6 +33,8 @@ export default function Chamados() {
   const { superCan } = useSuperRole()
   const [filtro, setFiltro] = useState('abertos')
   const [busca, setBusca] = useState('')
+  const [macrosOpen, setMacrosOpen] = useState(false)
+  const macros = useQuery({ queryKey: ['support-macros'], queryFn: listMacros })
 
   const tickets = useQuery({
     queryKey: ['tickets', 'suporte', filtro],
@@ -67,7 +72,15 @@ export default function Chamados() {
 
   return (
     <>
-      <PageHeader title="Chamados" subtitle="Dúvidas, problemas e sugestões enviados pelas academias" />
+      <PageHeader
+        title="Chamados"
+        subtitle="Dúvidas, problemas e sugestões enviados pelas academias"
+        actions={
+          <Button variant="outline" icon={MessageSquareText} onClick={() => setMacrosOpen(true)}>
+            Respostas prontas
+          </Button>
+        }
+      />
       <div className={`${split.split} ${id ? split.hasSelection : split.noSelection}`}>
         <div className={split.listCol}>
           <div className={split.toolbar}>
@@ -80,11 +93,13 @@ export default function Chamados() {
           <Button className={split.back} variant="ghost" size="sm" icon={ArrowLeft} to="/super-admin/chamados">
             Voltar
           </Button>
+          {selected && <TicketAcademyInfo academyId={selected.academy_id} />}
           <Card>
             {selected ? (
               <TicketThread
                 key={selected.id}
                 ticket={selected}
+                macros={macros.data}
                 side="suporte"
                 actions={
                   <>
@@ -101,6 +116,7 @@ export default function Chamados() {
                         icon={LogIn}
                         onClick={() => {
                           setAcademy(selected.academy_id)
+                          logAccess(selected.academy_id, 'acesso_super')
                           navigate('/admin')
                         }}
                       >
@@ -121,6 +137,7 @@ export default function Chamados() {
           </Card>
         </div>
       </div>
+      <MacrosModal open={macrosOpen} onClose={() => setMacrosOpen(false)} />
     </>
   )
 }

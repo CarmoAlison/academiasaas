@@ -76,8 +76,16 @@ export const createPayment = (academyId, values) =>
     }),
   )
 
-export const markPaid = (id, forma) =>
-  unwrap(supabase.from('payments').update({ status: 'pago', pago_em: nowISO(), forma_pagamento: forma }).eq('id', id))
+/**
+ * Registra o pagamento. `valor` (opcional) = valor efetivamente recebido, ex.: com multa e juros;
+ * nesse caso a descrição ganha o detalhe para aparecer no recibo.
+ */
+export function markPaid(id, forma, { valor, descricao } = {}) {
+  const patch = { status: 'pago', pago_em: nowISO(), forma_pagamento: forma }
+  if (valor !== undefined) patch.valor = valor
+  if (descricao !== undefined) patch.descricao = descricao
+  return unwrap(supabase.from('payments').update(patch).eq('id', id))
+}
 
 export const reopenPayment = (id) =>
   unwrap(supabase.from('payments').update({ status: 'pendente', pago_em: null, forma_pagamento: null }).eq('id', id))

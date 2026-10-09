@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Clock, DollarSign, Download, FilePlus2, FileText, Palette, RotateCcw, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, DollarSign, Download, FilePlus2, FileText, MessageCircle, Palette, RotateCcw, XCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { BarList } from '../../../components/charts/Charts'
 import QueryError from '../../../components/feedback/QueryError'
 import ReceiptModal from '../../../components/receipt/ReceiptModal'
@@ -20,9 +21,10 @@ import {
   useConfirm,
 } from '../../../components/ui'
 import { useMutationToast } from '../../../hooks/useMutationToast'
-import { cancelInvoice, generateInvoices, listSaasInvoices, markInvoicePaid, reopenInvoice } from '../../../services/saasService'
+import { cancelInvoice, generateInvoices, getSettings, listSaasInvoices, listSaasPlans, markInvoicePaid, reopenInvoice } from '../../../services/saasService'
 import { PAYMENT_METHODS } from '../../../utils/constants'
 import { exportCSV } from '../../../utils/csv'
+import { waLink } from '../../../utils/whatsapp'
 import { formatCurrency, formatDate, paymentStatus, toISODate } from '../../../utils/formatters'
 import { useSuperRole } from '../../../hooks/useSuperRole'
 
@@ -68,8 +70,14 @@ function PayInvoiceModal({ invoice, onClose, onPaid, invalidate }) {
 
 export default function Financeiro() {
   const { superCan } = useSuperRole()
-  const [competencia, setCompetencia] = useState(monthStart())
-  const [status, setStatus] = useState('')
+  const [params] = useSearchParams()
+  // ?mes=todos mostra todas as competências (ex.: "faturas vencidas" do dashboard)
+  const [competencia, setCompetencia] = useState(params.get('mes') === 'todos' ? '' : monthStart())
+  const [status, setStatus] = useState(params.get('status') ?? '')
+  const [plano, setPlano] = useState('')
+  const [ciclo, setCiclo] = useState('')
+  const plans = useQuery({ queryKey: ['saas-plans'], queryFn: listSaasPlans })
+  const settings = useQuery({ queryKey: ['saas-settings'], queryFn: getSettings })
   const [paying, setPaying] = useState(null)
   const [receiptFor, setReceiptFor] = useState(null)
   const [confirm, confirmDialog] = useConfirm()
@@ -79,14 +87,23 @@ export default function Financeiro() {
 
   const reopenMutation = useMutationToast(reopenInvoice, { success: 'Fatura reaberta', invalidate })
   const cancelMutation = useMutationToast(cancelInvoice, { success: 'Fatura cancelada', invalidate })
-  const generateMutation = useMutationToast(() => generateInvoices(`${competencia}-01`), {
+  const generateMutation = useMutationToast(() => generateInvoices(`${competencia || monthStart()}-01`), {
     success: (n) => (n ? `${n} fatura(s) gerada(s)` : 'Todas as academias ativas já possuem fatura nesta competência'),
     invalidate,
   })
 
   const all = useMemo(() => (query.data ?? []).map((i) => ({ ...i, situacao: paymentStatus(i) })), [query.data])
-  const monthRows = all.filter((i) => i.competencia.startsWith(competencia))
+  const monthRows = all.filter(
+    (i) => (!competencia || i.competencia.startsWith(competencia)) && (!plano || i.saas_plan_id === plano) && (!ciclo || i.ciclo === ciclo),
+  )
   const rows = monthRows.filter((i) => !status || i.situacao === status)
+
+  /** Cobrança da fatura em atraso pelo WhatsApp da academia */
+  const cobrar = (i) => {
+    const nomeSaas = settings.data?.nome || 'Academia SaaS'
+    const msg = `Olá, ${i.academy?.nome}! Identificamos que a fatura do ${nomeSaas} de ${formatDate(i.competencia).slice(3)} (${formatCurrency(i.valor)}), vencida em ${formatDate(i.vencimento)}, ainda está em aberto. Se já pagou, desconsidere. Podemos ajudar a regularizar?`
+    window.open(waLink(i.academy?.telefone, msg), '_blank', 'noopener')
+  }
 
   const sum = (list) => list.reduce((acc, i) => acc + Number(i.valor), 0)
   const recebido = sum(monthRows.filter((i) => i.situacao === 'pago'))
@@ -106,7 +123,7 @@ export default function Financeiro() {
   }, [all])
 
   const onExport = () =>
-    exportCSV(`faturas-saas-${competencia}`, [
+    exportCSV(`faturas-saas-${competencia || 'todas'}`, [
       { header: 'Academia', value: (i) => i.academy?.nome },
       { header: 'Plano', value: (i) => i.saas_plan?.nome },
       { header: 'Competência', value: (i) => i.competencia },
@@ -145,7 +162,17 @@ export default function Financeiro() {
 
       <StatGrid>
         <StatCard label="Faturado na competência" value={formatCurrency(sum(monthRows.filter((i) => i.status !== 'cancelado')))} icon={DollarSign} loading={query.isPending} />
-        <StatCard label="Recebido" value={formatCurrency(recebido)} icon={CheckCircle2} tone="success" loading={query.isPending} />
+        <StatCard
+          label="Recebido"
+          value={formatCurrency(recebido)}
+          icon={CheckCircle2}
+          tone="success"
+          loading={query.isPending}
+          hint={(() => {
+            const previsto = sum(monthRows.filter((i) => i.status !== 'cancelado'))
+            return previsto ? `${Math.round((recebido / previsto) * 100)}% do previsto (${formatCurrency(previsto)})` : undefined
+          })()}
+        />
         <StatCard label="A receber" value={formatCurrency(pendente)} icon={Clock} tone="warning" loading={query.isPending} />
         <StatCard
           label="Inadimplência (total)"
@@ -171,6 +198,28 @@ export default function Financeiro() {
         filters={
           <>
             <Input type="month" aria-label="Competência" value={competencia} onChange={(e) => setCompetencia(e.target.value)} />
+            {!competencia && (
+              <Button variant="ghost" size="sm" onClick={() => setCompetencia(monthStart())}>
+                Só este mês
+              </Button>
+            )}
+            <Select
+              aria-label="Plano"
+              placeholder="Todos os planos"
+              value={plano}
+              onChange={(e) => setPlano(e.target.value)}
+              options={(plans.data ?? []).map((p) => ({ value: p.id, label: p.nome }))}
+            />
+            <Select
+              aria-label="Ciclo"
+              placeholder="Mensal e anual"
+              value={ciclo}
+              onChange={(e) => setCiclo(e.target.value)}
+              options={[
+                { value: 'mensal', label: 'Mensal' },
+                { value: 'anual', label: 'Anual' },
+              ]}
+            />
             <Select
               aria-label="Status"
               placeholder="Todos"
@@ -221,6 +270,11 @@ export default function Financeiro() {
                 {i.status === 'pago' && (
                   <Tooltip content="Ver recibo">
                     <Button variant="ghost" size="sm" icon={FileText} onClick={() => setReceiptFor(i.id)} aria-label="Ver recibo" />
+                  </Tooltip>
+                )}
+                {i.situacao === 'atrasado' && (
+                  <Tooltip content={i.academy?.telefone ? 'Cobrar no WhatsApp' : 'Academia sem telefone cadastrado'}>
+                    <Button variant="ghost" size="sm" icon={MessageCircle} disabled={!i.academy?.telefone} onClick={() => cobrar(i)} aria-label="Cobrar no WhatsApp" />
                   </Tooltip>
                 )}
                 {i.status === 'pendente' && (

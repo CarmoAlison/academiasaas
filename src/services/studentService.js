@@ -1,4 +1,4 @@
-import { onlyDigits } from '../utils/formatters'
+import { addDays, onlyDigits, toISODate } from '../utils/formatters'
 import { applySearch, applySort, pageRange } from './paging'
 import { supabase, unwrap, unwrapWithCount } from './supabaseClient'
 
@@ -40,7 +40,10 @@ const STUDENT_SORT = {
 function studentsQuery(academyId, { search = '', filters = {} } = {}, options) {
   let query = supabase.from('v_students').select('*', options).eq('academy_id', academyId)
   if (filters.status === 'inadimplente') query = query.eq('inadimplente', true)
-  else if (filters.status === 'plano_vencido') query = query.eq('status', 'ativo').lt('plano_valido_ate', new Date().toISOString().slice(0, 10))
+  else if (filters.status === 'plano_vencido') query = query.eq('status', 'ativo').lt('plano_valido_ate', toISODate())
+  else if (filters.status === 'plano_vencendo')
+    query = query.eq('status', 'ativo').gte('plano_valido_ate', toISODate()).lte('plano_valido_ate', toISODate(addDays(new Date(), 7)))
+  else if (filters.status === 'aniversariantes') query = query.eq('status', 'ativo').eq('nasc_mes', new Date().getMonth() + 1)
   else if (filters.status) query = query.eq('status', filters.status)
   if (filters.plan_id) query = query.eq('plan_id', filters.plan_id)
   if (filters.unit_id) query = query.eq('unit_id', filters.unit_id)
@@ -123,3 +126,31 @@ export const academyUsage = (academyId) => unwrap(supabase.rpc('academy_usage', 
 
 /** Aluno logado: dados do próprio cadastro */
 export const getMyStudent = (studentId) => getStudent(studentId)
+
+/** Aniversariantes do mês (alunos ativos), por dia */
+export const listBirthdays = (academyId, mes = new Date().getMonth() + 1) =>
+  unwrap(
+    supabase
+      .from('v_students')
+      .select('id, nome, telefone, avatar_url, data_nascimento, nasc_dia')
+      .eq('academy_id', academyId)
+      .eq('status', 'ativo')
+      .eq('nasc_mes', mes)
+      .order('nasc_dia')
+      .limit(200),
+  )
+
+/** CPFs dos alunos já cadastrados (importação: evita duplicar) */
+export async function listStudentCpfs(academyId) {
+  const rows = await unwrap(supabase.from('v_students').select('cpf').eq('academy_id', academyId).limit(20000))
+  return new Set(rows.map((r) => r.cpf))
+}
+
+/** Histórico do aluno: alterações no cadastro, pagamentos, treinos, reservas, WhatsApp e contratos */
+export const studentHistory = (studentId) => unwrap(supabase.rpc('student_history', { p_student: studentId }))
+
+/** Progresso do aluno: meta semanal, dias treinados por semana e totais */
+export const myProgress = (studentId) => unwrap(supabase.rpc('my_progress', { p_student: studentId }))
+
+/** O aluno escolhe a meta de treinos por semana (1 a 7) */
+export const setMyWeeklyGoal = (studentId, meta) => unwrap(supabase.rpc('set_my_weekly_goal', { p_student: studentId, p_meta: meta }))

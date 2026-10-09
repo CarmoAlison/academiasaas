@@ -1,5 +1,6 @@
 import { lazy } from 'react'
 import { Route } from 'react-router-dom'
+import ModuleGuard from '../../routes/ModuleGuard'
 import PermissionGuard from '../../routes/PermissionGuard'
 import AdminIndex from './layout/AdminIndex'
 import AdminLayout from './layout/AdminLayout'
@@ -34,7 +35,10 @@ const WhatsappPanel = lazy(() => import('./whatsapp/WhatsappPanel'))
 const Relatorios = lazy(() => import('./relatorios/Relatorios'))
 const Suporte = lazy(() => import('./suporte/Suporte'))
 
-const guard = (perm, element) => <PermissionGuard perm={perm}>{element}</PermissionGuard>
+const guard = (perm, element, module) => {
+  const el = <PermissionGuard perm={perm}>{element}</PermissionGuard>
+  return module ? <ModuleGuard module={module}>{el}</ModuleGuard> : el
+}
 
 /** Rotas /admin/* (protegidas por RoleGuard em AppRoutes) */
 export const adminRoutes = (
@@ -46,13 +50,13 @@ export const adminRoutes = (
     <Route path="alunos/novo" element={guard('alunos.criar', <AlunoForm />)} />
     <Route path="alunos/:id" element={guard('alunos.ver', <AlunoForm />)} />
 
-    <Route path="treinos" element={guard('treinos.ver', <TreinosList />)} />
-    <Route path="treinos/novo" element={guard('treinos.criar', <TreinoForm />)} />
-    <Route path="treinos/:id" element={guard('treinos.ver', <TreinoForm />)} />
+    <Route path="treinos" element={guard('treinos.ver', <TreinosList />, 'treinos')} />
+    <Route path="treinos/novo" element={guard('treinos.criar', <TreinoForm />, 'treinos')} />
+    <Route path="treinos/:id" element={guard('treinos.ver', <TreinoForm />, 'treinos')} />
 
-    <Route path="aulas" element={guard('aulas.ver', <AulasList />)} />
-    <Route path="aulas/nova" element={guard('aulas.criar', <AulaForm />)} />
-    <Route path="aulas/:id" element={guard('aulas.ver', <AulaForm />)} />
+    <Route path="aulas" element={guard('aulas.ver', <AulasList />, 'aulas')} />
+    <Route path="aulas/nova" element={guard('aulas.criar', <AulaForm />, 'aulas')} />
+    <Route path="aulas/:id" element={guard('aulas.ver', <AulaForm />, 'aulas')} />
 
     <Route path="planos" element={guard('planos.ver', <PlanosList />)} />
     <Route path="planos/novo" element={guard('planos.criar', <PlanoForm />)} />
@@ -62,18 +66,18 @@ export const adminRoutes = (
     <Route path="unidades/nova" element={guard('unidades.criar', <UnidadeForm />)} />
     <Route path="unidades/:id" element={guard('unidades.ver', <UnidadeForm />)} />
 
-    <Route path="checkin" element={guard('alunos.ver', <Checkin />)} />
-    <Route path="whatsapp" element={guard('financeiro.ver', <WhatsappPanel />)} />
+    <Route path="checkin" element={guard('alunos.ver', <Checkin />, 'checkin')} />
+    <Route path="whatsapp" element={guard('financeiro.ver', <WhatsappPanel />, 'whatsapp')} />
 
-    <Route path="financeiro" element={guard('financeiro.ver', <Financeiro />)} />
-    <Route path="financeiro/recibo" element={guard('financeiro.editar', <PersonalizarRecibo />)} />
+    <Route path="financeiro" element={guard('financeiro.ver', <Financeiro />, 'financeiro')} />
+    <Route path="financeiro/recibo" element={guard('financeiro.editar', <PersonalizarRecibo />, 'financeiro')} />
 
-    <Route path="relatorios" element={guard('relatorios.ver', <Relatorios />)} />
+    <Route path="relatorios" element={guard('relatorios.ver', <Relatorios />, 'relatorios')} />
 
     <Route path="perfil-acesso" element={<PermissionGuard any={['perfis.ver', 'equipe.ver']}><PerfilAcesso /></PermissionGuard>} />
     <Route path="perfil-acesso/gerenciar" element={guard('perfis.ver', <GerenciarPerfil />)} />
 
-    <Route path="auditoria" element={guard('auditoria.ver', <AuditoriaLayout />)}>
+    <Route path="auditoria" element={guard('auditoria.ver', <AuditoriaLayout />, 'auditoria')}>
       <Route index element={<AuditoriaHome />} />
       <Route path="log-detalhado" element={<LogDetalhado />} />
       <Route path="log-completo" element={<LogCompleto />} />
@@ -84,8 +88,8 @@ export const adminRoutes = (
     <Route path="assinatura" element={guard(ADMIN_ONLY, <Assinatura />)} />
     <Route path="configuracoes" element={guard(ADMIN_ONLY, <ConfiguracoesAcademia />)} />
 
-    <Route path="suporte" element={<Suporte />} />
-    <Route path="suporte/:id" element={<Suporte />} />
+    <Route path="suporte" element={<ModuleGuard module="suporte"><Suporte /></ModuleGuard>} />
+    <Route path="suporte/:id" element={<ModuleGuard module="suporte"><Suporte /></ModuleGuard>} />
 
     <Route path="perfil" element={<Perfil />} />
   </Route>
