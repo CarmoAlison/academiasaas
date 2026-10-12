@@ -210,7 +210,8 @@ export default function Financeiro() {
   })
   const s = summary.data
   const recebidoPct = s && Number(s.previsto) ? Math.round((Number(s.recebido) / Number(s.previsto)) * 100) : null
-  const invalidate = [['payments', academyId], ['admin-dashboard', academyId]]
+  // uma cobrança mexe em várias telas: lista e ficha do aluno (inadimplente, validade do plano), cobrança no WhatsApp e dashboard
+  const invalidate = [['payments', academyId], ['admin-dashboard', academyId], ['students', academyId], ['student'], ['whatsapp-queue', academyId]]
 
   const reopenMutation = useMutationToast(reopenPayment, { success: 'Pagamento reaberto', invalidate })
   const cancelMutation = useMutationToast(cancelPayment, { success: 'Cobrança cancelada', invalidate })
@@ -221,7 +222,7 @@ export default function Financeiro() {
       n
         ? `${n} cobrança(s) de renovação gerada(s) (vencimento no dia seguinte ao fim de cada plano)`
         : 'Nenhuma renovação pendente: todos os planos que vencem até o fim do mês já têm cobrança',
-    invalidate: [...invalidate, ['students', academyId]],
+    invalidate,
   })
 
   const onExport = async () => {
@@ -448,7 +449,7 @@ export default function Financeiro() {
                         icon={Trash2}
                         aria-label="Excluir"
                         onClick={async () => {
-                          if (await confirm({ title: 'Excluir cobrança', message: 'A cobrança será removida da listagem.', danger: true, confirmLabel: 'Excluir' })) {
+                          if (await confirm({ title: 'Excluir cobrança', message: 'A cobrança sai do sistema e deixa de contar nos totais, na inadimplência e nas renovações. Se foi engano, o suporte consegue restaurar em até 15 dias.', danger: true, confirmLabel: 'Excluir' })) {
                             removeMutation.mutate(p.id)
                           }
                         }}

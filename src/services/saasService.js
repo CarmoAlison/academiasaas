@@ -309,3 +309,19 @@ export async function duplicateSaasOffer(offer) {
   for (const k of ['id', 'created_at', 'updated_at']) delete rest[k]
   return unwrap(supabase.from('saas_offers').insert({ ...rest, nome: `${offer.nome} (cópia)`, ativo: false }))
 }
+
+/** Lixeira geral (todas as academias): itens excluídos nos últimos 15 dias */
+export const listTrash = () =>
+  unwrap(
+    supabase
+      .from('lixeira')
+      .select('id, tipo, registro_id, academy_id, titulo, subtitulo, excluido_em, excluido_por_nome, academy:academies(nome)')
+      .order('excluido_em', { ascending: false })
+      .limit(3000),
+  )
+
+/** Devolve o item (e o que foi junto com ele) exatamente como estava */
+export const restoreTrash = (id) => unwrap(supabase.rpc('restore_trash', { p_id: id }))
+
+/** Apaga de vez, sem esperar os 15 dias */
+export const purgeTrashItem = (id) => unwrap(supabase.rpc('purge_trash_item', { p_id: id }))

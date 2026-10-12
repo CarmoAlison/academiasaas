@@ -41,6 +41,7 @@ Depois, **sempre** execute em ordem os arquivos de `src/database/migrations/`. E
 | `019_gestao_academia.sql` | Gestão da academia: dados e endereço editáveis pelo admin, multa/juros/PIX, horário de funcionamento (check-in só com a academia aberta), aniversariantes e histórico do aluno |
 | `020_evolucao_aluno.sql` | Evolução do aluno: marcação por exercício e carga usada (gráfico de evolução), meta semanal, sequência de semanas e conquistas |
 | `021_limites_do_plano.sql` | Limites de unidades e de alunos do plano valem também para o Super Admin dentro da academia; uso de unidades no `academy_usage` |
+| `022_lixeira.sql` | Lixeira geral: o que a academia exclui (mensalidades, alunos, equipe, planos, unidades, exercícios, treinos, aulas, perfis) some e para de contar; Super Admin vê, restaura ou apaga; após 15 dias é apagado de vez com tudo ligado |
 
 ### 2. Frontend
 

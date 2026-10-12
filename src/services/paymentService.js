@@ -92,7 +92,8 @@ export const reopenPayment = (id) =>
 
 export const cancelPayment = (id) => unwrap(supabase.from('payments').update({ status: 'cancelado' }).eq('id', id))
 
-export const removePayment = (id) => unwrap(supabase.from('payments').update({ deleted_at: nowISO() }).eq('id', id))
+/** Exclui a mensalidade: sai do sistema e vai para a lixeira (só o Super Admin vê; apagada de vez em 15 dias) */
+export const removePayment = (id) => unwrap(supabase.rpc('delete_payment', { p_payment: id }))
 
 /**
  * Gera as cobranças de renovação (no banco, de uma vez): alunos ativos com plano cuja

@@ -311,6 +311,7 @@ function describe(r, plans) {
     const venc = formatDate(d.vencimento ?? a.vencimento)
     if (r.acao === 'insert') out.push({ icon: CircleDollarSign, text: `Cobrança criada: ${formatCurrency(d.valor)} (venc. ${venc})` })
     else if (r.acao === 'soft_delete') out.push({ icon: CircleDollarSign, text: `Cobrança excluída: ${formatCurrency(a.valor)} (venc. ${venc})`, tone: 'bad' })
+    else if (r.acao === 'delete') return out // remoção física ao ir para a lixeira: a exclusão já aparece acima
     else if (a.status !== d.status) {
       const label = { pago: 'paga', cancelado: 'cancelada', pendente: 'reaberta' }[d.status] ?? d.status
       out.push({ icon: CircleDollarSign, text: `Cobrança de ${formatCurrency(d.valor)} (venc. ${venc}) ${label}`, tone: d.status === 'pago' ? 'ok' : undefined })
