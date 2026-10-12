@@ -141,6 +141,7 @@
 .active:hover {
   background: var(--color-primary-light);
   color: var(--color-primary);
+  border-left:3px solid var(--color-primary);
 }
 
 .collapsed .link {

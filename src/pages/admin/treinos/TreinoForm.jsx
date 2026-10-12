@@ -24,7 +24,7 @@ import { usePermissions } from '../../../hooks/usePermissions'
 import { exerciseService } from '../../../services/catalogServices'
 import { listStaffOptions } from '../../../services/roleService'
 import { listStudentOptions } from '../../../services/studentService'
-import { getWorkout, removeWorkout, saveWorkout } from '../../../services/workoutService'
+import { getWorkout, removeWorkout, saveWorkout, workoutByStudent } from '../../../services/workoutService'
 import { WEEKDAYS } from '../../../utils/constants'
 import { addDays, toISODate } from '../../../utils/formatters'
 import { rules } from '../../../utils/validators'
@@ -59,6 +59,8 @@ export default function TreinoForm() {
   const students = useQuery({ queryKey: ['student-options', academyId], queryFn: () => listStudentOptions(academyId) })
   const staff = useQuery({ queryKey: ['staff-options', academyId], queryFn: () => listStaffOptions(academyId) })
   const exercises = useQuery({ queryKey: ['exercises', academyId], queryFn: () => exerciseService.list(academyId) })
+  // cada aluno tem uma ficha só: aluno que já tem ficha abre a dele
+  const fichas = useQuery({ queryKey: ['workouts', academyId, 'by-student'], queryFn: () => workoutByStudent(academyId), enabled: isNew })
 
   const { field, handleSubmit, reset, values, setValue } = useForm(
     {
@@ -72,10 +74,18 @@ export default function TreinoForm() {
     },
     {
       student_id: [rules.required('Selecione o aluno')],
-      nome: [rules.required('Dê um nome à ficha')],
       data_fim: [(v, all) => (v && all.data_inicio && v < all.data_inicio ? 'Data final antes da inicial' : undefined)],
     },
   )
+
+  // veio de "Novo treino" de um aluno que já tem ficha: abre a ficha dele
+  const fichaExistente = isNew && values.student_id ? (fichas.data?.[values.student_id] ?? null) : null
+  const vindoDoAluno = isNew && params.get('aluno')
+  useEffect(() => {
+    if (vindoDoAluno && fichaExistente && values.student_id === params.get('aluno')) {
+      navigate(`/admin/treinos/${fichaExistente}`, { replace: true })
+    }
+  }, [vindoDoAluno, fichaExistente, values.student_id, params, navigate])
 
   useEffect(() => {
     const w = workout.data
@@ -201,21 +211,25 @@ export default function TreinoForm() {
     }
     setInvalidKeys([])
     setDaysError('')
-    saveMutation.mutate(v)
+    if (fichaExistente) return
+    saveMutation.mutate({ ...v, nome: v.nome || 'Treino da semana' })
   })
 
   if (!isNew && workout.isPending) return <PageLoader />
   if (!isNew && workout.isError) return <QueryError error={workout.error} onRetry={workout.refetch} />
 
   const exerciseOptions = (exercises.data ?? []).map((e) => ({ value: e.id, label: e.grupo_muscular ? `${e.nome} (${e.grupo_muscular})` : e.nome }))
-  const title = isNew ? 'Novo treino da semana' : workout.data.nome
+  const alunoNome = workout.data?.student?.profile?.nome
+  const title = isNew ? 'Novo treino da semana' : `Treino de ${alunoNome ?? 'aluno'}`
+  // alunos que já têm ficha aparecem marcados (cada aluno tem uma só)
+  const studentOptions = (students.data ?? []).map((s) => (isNew && fichas.data?.[s.value] ? { ...s, label: `${s.label} — já tem ficha` } : s))
 
   return (
     <>
       {confirmDialog}
       <PageHeader
         title={title}
-        breadcrumb={[{ label: 'Treinos', to: '/admin/treinos' }, { label: isNew ? 'Novo' : workout.data.nome }]}
+        breadcrumb={[{ label: 'Treinos', to: '/admin/treinos' }, { label: isNew ? 'Novo' : (alunoNome ?? 'Treino') }]}
         actions={
           !isNew &&
           can('treinos.excluir') && (
@@ -239,13 +253,21 @@ export default function TreinoForm() {
           <Card>
             <FormSection title="Dados do treino">
               <FormGrid columns={3}>
-                <Select label="Aluno" required placeholder="Selecione o aluno" options={students.data ?? []} disabled={!isNew} {...field('student_id')} />
-                <Input label="Nome da ficha" required placeholder="Ex.: Hipertrofia — Outubro" {...field('nome')} />
+                <Select label="Aluno" required placeholder="Selecione o aluno" options={studentOptions} disabled={!isNew} {...field('student_id')} />
                 <Input label="Objetivo" placeholder="Hipertrofia, emagrecimento..." {...field('objetivo')} />
                 <Select label="Professor" placeholder="Não definido" options={staff.data ?? []} {...field('professor_id')} />
                 <Input label="Início" type="date" {...field('data_inicio')} />
                 <Input label="Fim" type="date" {...field('data_fim')} />
               </FormGrid>
+              {fichaExistente && (
+                <div className={styles.fichaAviso} role="alert">
+                  <AlertCircle size={18} />
+                  <span>Este aluno já tem uma ficha de treino. Cada aluno tem uma só: abra a ficha dele para alterar os exercícios.</span>
+                  <Button type="button" size="sm" to={`/admin/treinos/${fichaExistente}`}>
+                    Abrir a ficha
+                  </Button>
+                </div>
+              )}
               <div style={{ marginTop: 16 }}>
                 <Switch label="Treino ativo (visível para o aluno)" checked={values.ativo} onChange={(v) => setValue('ativo', v)} />
               </div>
@@ -423,7 +445,7 @@ export default function TreinoForm() {
               <Button variant="outline" to="/admin/treinos">
                 Cancelar
               </Button>
-              <Button type="submit" icon={Save} loading={saveMutation.isPending}>
+              <Button type="submit" icon={Save} loading={saveMutation.isPending} disabled={Boolean(fichaExistente)}>
                 {isNew ? 'Salvar treino da semana' : 'Salvar alterações'}
               </Button>
             </FormActions>

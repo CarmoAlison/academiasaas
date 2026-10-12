@@ -135,26 +135,35 @@ export function TreinosTab({ student, academyId }) {
     queryFn: () => listWorkoutsByStudent(academyId, student.id),
   })
   if (workouts.isError) return <QueryError error={workouts.error} onRetry={workouts.refetch} />
+  // cada aluno tem uma ficha só: com ficha, o botão abre a dela
+  const ficha = (workouts.data ?? [])[0]
   return (
     <DataTable
       loading={workouts.isPending}
       data={workouts.data ?? []}
-      emptyTitle="Nenhum treino para este aluno"
+      searchable={false}
+      emptyTitle="Este aluno ainda não tem ficha de treino"
       emptyAction={can('treinos.criar') && <Button icon={Plus} to={`/admin/treinos/novo?aluno=${student.id}`}>Montar treino</Button>}
       actions={
-        can('treinos.criar') && (
-          <Button size="sm" icon={Plus} to={`/admin/treinos/novo?aluno=${student.id}`}>
-            Novo treino
+        ficha ? (
+          <Button size="sm" icon={Dumbbell} to={`/admin/treinos/${ficha.id}`}>
+            Abrir ficha
           </Button>
+        ) : (
+          can('treinos.criar') && (
+            <Button size="sm" icon={Plus} to={`/admin/treinos/novo?aluno=${student.id}`}>
+              Montar treino
+            </Button>
+          )
         )
       }
       columns={[
         {
           key: 'nome',
-          header: 'Treino',
+          header: 'Ficha',
           render: (w) => (
             <Link to={`/admin/treinos/${w.id}`} style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontWeight: 600 }}>
-              <Dumbbell size={16} /> {w.nome}
+              <Dumbbell size={16} /> Treino da semana
             </Link>
           ),
         },

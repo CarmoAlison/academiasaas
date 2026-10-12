@@ -188,3 +188,9 @@ export function saveExerciseLog({ workout, item, data, ...patch }) {
     ),
   )
 }
+
+/** Aluno → ficha dele (cada aluno tem uma só): { [student_id]: workout_id } */
+export async function workoutByStudent(academyId) {
+  const rows = await unwrap(supabase.from('workouts').select('id, student_id').eq('academy_id', academyId).is('deleted_at', null))
+  return Object.fromEntries(rows.map((w) => [w.student_id, w.id]))
+}

@@ -35,7 +35,7 @@ function WorkoutsTab() {
   return (
     <DataTable
       {...tableProps}
-      searchPlaceholder="Buscar por aluno, treino, objetivo ou professor"
+      searchPlaceholder="Buscar por aluno, objetivo ou professor"
       onRowClick={(w) => navigate(`/admin/treinos/${w.id}`)}
       filters={
         <Select
@@ -52,8 +52,7 @@ function WorkoutsTab() {
       emptyTitle="Nenhum treino encontrado"
       emptyAction={can('treinos.criar') && <Button icon={Plus} to="/admin/treinos/novo">Montar treino</Button>}
       columns={[
-        { key: 'nome', header: 'Treino', render: (w) => <strong>{w.nome}</strong> },
-        { key: 'aluno_nome', header: 'Aluno', render: (w) => w.aluno_nome ?? '—' },
+        { key: 'aluno_nome', header: 'Aluno', render: (w) => <strong>{w.aluno_nome ?? '—'}</strong> },
         { key: 'total_dias', header: 'Dias', render: (w) => summarizeDays(daysOf(w)) },
         { key: 'objetivo', header: 'Objetivo', render: (w) => w.objetivo ?? '—' },
         { key: 'professor_nome', header: 'Professor', render: (w) => w.professor_nome ?? '—' },
