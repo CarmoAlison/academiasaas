@@ -83,7 +83,7 @@ function tabsFor(has) {
     has('identidade') && { key: 'identidade', label: 'Identidade' },
     { key: 'dados', label: 'Dados e endereço' },
     { key: 'horario', label: 'Horário de funcionamento' },
-    (has('aulas') || has('checkin')) && { key: 'regras', label: 'Regras' },
+    (has('aulas') || has('checkin') || has('catraca')) && { key: 'regras', label: 'Regras' },
     has('financeiro') && { key: 'cobranca', label: 'Cobrança' },
     has('contratos') && { key: 'contrato', label: 'Contrato' },
     has('whatsapp') && { key: 'mensagens', label: 'Mensagens' },
@@ -204,6 +204,30 @@ function SettingsForm({ initial, tab, onTab }) {
 
       {tab === 'regras' && (
         <>
+          {mod.has('catraca') && (
+            <FormSection title="Catraca" description="O que bloqueia a entrada na catraca. Bloqueado, o aluno vê o motivo no visor e procura a recepção.">
+              <div style={{ display: 'grid', gap: 12 }}>
+                <Switch
+                  label="Bloquear aluno com mensalidade em atraso (respeita a tolerância da aba Cobrança)"
+                  checked={Boolean(values.catraca_bloquear_inadimplente)}
+                  onChange={(v) => setValue('catraca_bloquear_inadimplente', v)}
+                />
+                <Switch
+                  label="Bloquear aluno com plano vencido"
+                  checked={Boolean(values.catraca_bloquear_vencido)}
+                  onChange={(v) => setValue('catraca_bloquear_vencido', v)}
+                />
+                <Switch
+                  label="Bloquear fora do horário de funcionamento"
+                  checked={Boolean(values.catraca_bloquear_fora_horario)}
+                  onChange={(v) => setValue('catraca_bloquear_fora_horario', v)}
+                />
+              </div>
+              <p className="text-muted" style={{ marginTop: 12, fontSize: 14 }}>
+                Aluno inativo, trancado ou excluído é sempre bloqueado. Para visitantes, use "Liberar giro" na página Catraca.
+              </p>
+            </FormSection>
+          )}
           {mod.has('aulas') && (
             <FormSection title="Aulas coletivas" description="Regras de reserva aplicadas na área do aluno.">
               <FormGrid columns={2}>

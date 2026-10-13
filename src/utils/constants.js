@@ -29,6 +29,7 @@ export const RESOURCES = [
   { key: 'perfis', label: 'Perfis de acesso' },
   { key: 'auditoria', label: 'Auditoria' },
   { key: 'relatorios', label: 'Relatórios' },
+  { key: 'catraca', label: 'Catraca' },
 ]
 
 export const ACTIONS = [
@@ -37,6 +38,8 @@ export const ACTIONS = [
   { key: 'editar', label: 'Editar' },
   { key: 'excluir', label: 'Excluir' },
   { key: 'exportar', label: 'Exportar' },
+  { key: 'liberar', label: 'Liberar giro' },
+  { key: 'biometria', label: 'Cadastrar rosto' },
 ]
 
 export const STUDENT_STATUS = [

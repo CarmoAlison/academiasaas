@@ -16,6 +16,7 @@ const Chamados = lazy(() => import('./chamados/Chamados'))
 const Avisos = lazy(() => import('./avisos/Avisos'))
 const Perfil = lazy(() => import('./perfil/Perfil'))
 const Lixeira = lazy(() => import('./lixeira/Lixeira'))
+const Equipamentos = lazy(() => import('./equipamentos/Equipamentos'))
 
 const guard = (area, element) => <SuperGuard area={area}>{element}</SuperGuard>
 
@@ -38,5 +39,6 @@ export const superAdminRoutes = (
     <Route path="configuracoes" element={guard('config', <Configuracoes />)} />
     <Route path="perfil" element={<Perfil />} />
     <Route path="lixeira" element={<Lixeira />} />
+    <Route path="equipamentos" element={<Equipamentos />} />
   </Route>
 )

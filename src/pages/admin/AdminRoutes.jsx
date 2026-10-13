@@ -31,6 +31,7 @@ const Perfil = lazy(() => import('./perfil/Perfil'))
 const Assinatura = lazy(() => import('./assinatura/Assinatura'))
 const ConfiguracoesAcademia = lazy(() => import('./configuracoes/ConfiguracoesAcademia'))
 const Checkin = lazy(() => import('./checkin/Checkin'))
+const Catraca = lazy(() => import('./catraca/Catraca'))
 const WhatsappPanel = lazy(() => import('./whatsapp/WhatsappPanel'))
 const Relatorios = lazy(() => import('./relatorios/Relatorios'))
 const Suporte = lazy(() => import('./suporte/Suporte'))
@@ -67,6 +68,7 @@ export const adminRoutes = (
     <Route path="unidades/:id" element={guard('unidades.ver', <UnidadeForm />)} />
 
     <Route path="checkin" element={guard('alunos.ver', <Checkin />, 'checkin')} />
+    <Route path="catraca" element={<ModuleGuard module="catraca"><PermissionGuard any={['catraca.ver', 'catraca.liberar']}><Catraca /></PermissionGuard></ModuleGuard>} />
     <Route path="whatsapp" element={guard('financeiro.ver', <WhatsappPanel />, 'whatsapp')} />
 
     <Route path="financeiro" element={guard('financeiro.ver', <Financeiro />, 'financeiro')} />

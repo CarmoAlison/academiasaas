@@ -43,6 +43,8 @@ Depois, **sempre** execute em ordem os arquivos de `src/database/migrations/`. E
 | `021_limites_do_plano.sql` | Limites de unidades e de alunos do plano valem também para o Super Admin dentro da academia; uso de unidades no `academy_usage` |
 | `022_lixeira.sql` | Lixeira geral: o que a academia exclui (mensalidades, alunos, equipe, planos, unidades, exercícios, treinos, aulas, perfis) some e para de contar; Super Admin vê, restaura ou apaga; após 15 dias é apagado de vez com tudo ligado |
 | `023_uma_ficha_por_aluno.sql` | Cada aluno tem uma ficha de treino só (o banco recusa a segunda); o nome da ficha deixa de ser pedido |
+| `024_catraca.sql` | Catraca Control iD (iDFace + iDBlock Next): equipamentos (Super Admin, senha criptografada), modo online/push via Edge Function `catraca`, cadastro facial, liberação manual, regras de bloqueio por academia, permissões e módulo adicional |
+| `025_catraca_fotos.sql` | Catraca: permissão de leitura nas fotos do cadastro facial (corrige "Você não tem permissão" ao enviar a foto) |
 
 ### 2. Frontend
 

@@ -17,6 +17,10 @@ export const ACADEMY_DEFAULTS = {
   // Horário de funcionamento: 7 dias (0 = domingo) { aberto, abre, fecha }; null = não informado
   horarios: null,
   checkin_somente_aberto: false,
+  // Catraca (regras de bloqueio de cada academia)
+  catraca_bloquear_inadimplente: true,
+  catraca_bloquear_vencido: true,
+  catraca_bloquear_fora_horario: false,
   // Aulas
   aulas_lista_espera: true,
   aulas_cancelamento_horas: 2,

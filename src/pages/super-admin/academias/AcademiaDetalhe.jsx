@@ -43,6 +43,7 @@ import { TicketStatusBadge } from '../../../components/support/TicketThread'
 import { logAccess } from '../../../services/logService'
 import { listTickets } from '../../../services/supportService'
 import AcademyTimeline from './AcademyTimeline'
+import CatracaTab from './CatracaTab'
 import { ModulesPanel } from './ModulesModal'
 import SubscriptionFields from './SubscriptionFields'
 
@@ -159,6 +160,7 @@ const TABS = [
   { key: 'faturas', label: 'Faturas' },
   { key: 'chamados', label: 'Chamados', area: 'suporte' },
   { key: 'administradores', label: 'Administradores' },
+  { key: 'catraca', label: 'Catraca' },
   { key: 'historico', label: 'Histórico' },
 ]
 
@@ -339,6 +341,8 @@ export default function AcademiaDetalhe() {
             />
           </Card>
         )}
+
+        {tab === 'catraca' && <CatracaTab academyId={a.id} />}
 
         {tab === 'chamados' && (
           <Card title="Chamados" padding={false}>

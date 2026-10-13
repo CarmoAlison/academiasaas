@@ -83,6 +83,23 @@ A migração `006_seguranca.sql` agenda a limpeza diária com **pg_cron**. Se ap
   - `wasm-unsafe-eval` é necessário para gerar o **PDF do recibo** (o motor de layout é WebAssembly). Ele não libera `eval` de JavaScript.
 - **Indexação:** `robots.txt` e a meta tag `noindex` impedem o Google de indexar o sistema, que é privado.
 
+## 5.1 Catraca Control iD (Edge Function `catraca`)
+
+A catraca (iDFace em modo online + push) chama uma **Edge Function do Supabase**, não o site da Vercel. Ela fica em `supabase/functions/catraca/` e precisa ser publicada uma vez (e de novo quando o código dela mudar):
+
+```bash
+npx supabase login                              # abre o navegador para entrar na conta do Supabase
+npx supabase link --project-ref SEU_PROJECT_REF # o "Reference ID" em Project Settings → General
+npx supabase functions deploy catraca --no-verify-jwt
+```
+
+- `--no-verify-jwt` é obrigatório: o aparelho não faz login; quem identifica cada catraca é o **código secreto** no endereço.
+- As chaves `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já existem dentro das Edge Functions; **não** coloque a service_role na Vercel.
+- Para ver o que a catraca está enviando: Supabase → **Edge Functions → catraca → Logs**.
+- Antes, rode a migration `024_catraca.sql`.
+
+Depois, no Super Admin: **Academia → Módulos** (ligar "Catraca") → aba **Catraca → Adicionar catraca**. O sistema mostra o endereço e o passo a passo para configurar o aparelho.
+
 ## 6. Domínio próprio
 
 - **Do site:** Vercel → Project → **Settings → Domains**. Nada muda no código.

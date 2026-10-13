@@ -9,8 +9,9 @@ import styles from './ModulesModal.module.css'
 
 const GRUPOS = { gestao: 'Gestão', aluno: 'Área do aluno', ambos: 'Gestão e área do aluno' }
 
-/** O plano inclui o módulo? (plano sem lista = todos) */
-export const planIncludes = (plan, slug) => !plan?.modulos || plan.modulos.includes(slug)
+/** O plano inclui o módulo? (plano sem lista = todos, exceto os "somente adicional", que precisam estar listados ou ligados na academia) */
+export const planIncludes = (plan, m) =>
+  m.somente_adicional ? Boolean(plan?.modulos?.includes(m.slug)) : !plan?.modulos || plan.modulos.includes(m.slug)
 
 /** Estado do editor de módulos de uma academia (usado no modal e na aba da página) */
 function useModulesEditor(academy, onSaved) {
@@ -26,7 +27,7 @@ function useModulesEditor(academy, onSaved) {
     setOverride((prev) => {
       const next = { ...prev }
       // igual ao plano → remove o ajuste (volta a seguir o plano)
-      if (on === planIncludes(plan, m.slug)) delete next[m.slug]
+      if (on === planIncludes(plan, m)) delete next[m.slug]
       else next[m.slug] = on
       return next
     })
@@ -53,7 +54,7 @@ function useModulesEditor(academy, onSaved) {
 function ModulesBody({ editor }) {
   const { loading, plan, list, override, toggle } = editor
   if (loading) return <SkeletonCard lines={6} />
-  const isOn = (m) => m.essencial || (m.slug in override ? override[m.slug] : planIncludes(plan, m.slug))
+  const isOn = (m) => m.essencial || (m.slug in override ? override[m.slug] : planIncludes(plan, m))
   const ajustes = Object.keys(override).length
   const optional = list.filter((m) => !m.essencial)
 
@@ -88,6 +89,8 @@ function ModulesBody({ editor }) {
                     </Badge>
                   ) : adjusted ? (
                     <Badge tone="warning">Ajustado</Badge>
+                  ) : m.somente_adicional ? (
+                    <Badge>Adicional</Badge>
                   ) : (
                     <Badge tone="info">Do plano</Badge>
                   )}
