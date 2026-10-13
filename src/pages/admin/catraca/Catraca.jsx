@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { DoorOpen, LogIn, ShieldX, Unlock } from 'lucide-react'
+import { DoorOpen, FileBarChart, LogIn, ShieldX, Unlock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import QueryError from '../../../components/feedback/QueryError'
@@ -10,15 +10,11 @@ import { usePermissions } from '../../../hooks/usePermissions'
 import { liberarCatraca, listAcessos, listCatracasAcademia } from '../../../services/catracaService'
 import { supabase } from '../../../services/supabaseClient'
 import { formatDateTime, toISODate } from '../../../utils/formatters'
+import { METODOS, RESULTADOS } from './catracaReport'
+import RelatorioCatraca from './RelatorioCatraca'
 
-const RESULTADOS = {
-  liberado: { label: 'Entrou', tone: 'success' },
-  bloqueado: { label: 'Bloqueado', tone: 'danger' },
-  manual: { label: 'Liberado pela recepção', tone: 'info' },
-  desistencia: { label: 'Não passou', tone: 'neutral' },
-  nao_identificado: { label: 'Não identificado', tone: 'warning' },
-}
-const METODOS = { facial: 'Rosto', cartao: 'Cartão', qrcode: 'QR Code', senha: 'Senha' }
+const SEM_CATRACAS = []
+
 
 /** Liberar o giro manualmente (permissão "Liberar giro") */
 function LiberarModal({ catracas, onClose }) {
@@ -73,6 +69,7 @@ export default function Catraca() {
   const [resultado, setResultado] = useState('')
   const [dia, setDia] = useState(toISODate())
   const [liberar, setLiberar] = useState(false)
+  const [relatorio, setRelatorio] = useState(false)
   const inicio = new Date(`${dia}T00:00:00`).toISOString()
   const fim = new Date(new Date(`${dia}T00:00:00`).getTime() + 86400000).toISOString()
 
@@ -110,11 +107,16 @@ export default function Catraca() {
         title="Catraca"
         subtitle="Quem entrou e quem foi bloqueado, em tempo real"
         actions={
-          can('catraca.liberar') && (
-            <Button icon={Unlock} onClick={() => setLiberar(true)} disabled={!catracas.data?.length}>
-              Liberar giro
+          <>
+            <Button variant="outline" icon={FileBarChart} onClick={() => setRelatorio(true)}>
+              Relatório
             </Button>
-          )
+            {can('catraca.liberar') && (
+              <Button icon={Unlock} onClick={() => setLiberar(true)} disabled={!catracas.data?.length}>
+                Liberar giro
+              </Button>
+            )}
+          </>
         }
       />
       <StatGrid>
@@ -168,6 +170,7 @@ export default function Catraca() {
         ]}
       />
       {liberar && <LiberarModal catracas={catracas.data ?? []} onClose={() => setLiberar(false)} />}
+      {relatorio && <RelatorioCatraca catracas={catracas.data ?? SEM_CATRACAS} onClose={() => setRelatorio(false)} />}
     </>
   )
 }

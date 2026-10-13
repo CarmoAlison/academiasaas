@@ -58,6 +58,30 @@ export function listAcessos(academyId, { resultado, de, deviceId } = {}) {
   return unwrap(q)
 }
 
+/** Todos os acessos de um período (relatório), buscados em lotes de 1000 */
+export async function listAcessosPeriodo(academyId, { de, ate, deviceId, resultado } = {}) {
+  const LOTE = 1000
+  const MAX = 20000
+  const rows = []
+  for (let from = 0; from < MAX; from += LOTE) {
+    let q = supabase
+      .from('catraca_acessos')
+      .select('id, device_id, student_id, nome, resultado, motivo, metodo, por_nome, created_at')
+      .eq('academy_id', academyId)
+      .gte('created_at', de)
+      .lt('created_at', ate)
+      .order('created_at')
+      .order('id')
+      .range(from, from + LOTE - 1)
+    if (resultado) q = q.eq('resultado', resultado)
+    if (deviceId) q = q.eq('device_id', deviceId)
+    const lote = await unwrap(q)
+    rows.push(...lote)
+    if (lote.length < LOTE) break
+  }
+  return rows
+}
+
 /** Situação do rosto do aluno na catraca */
 export const faceStatus = (studentId) =>
   unwrap(supabase.from('catraca_usuarios').select('face_status, face_erro, face_em').eq('student_id', studentId).maybeSingle())

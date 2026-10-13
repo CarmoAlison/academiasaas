@@ -6,7 +6,7 @@ const MUTED = '#6B7280'
 const LINE = '#E5E7EB'
 const MAX_ROWS = 300
 
-const s = StyleSheet.create({
+export const reportStyles = StyleSheet.create({
   page: { paddingTop: 28, paddingBottom: 40, paddingHorizontal: 28, fontFamily: 'Helvetica', fontSize: 9, color: INK },
   header: { paddingBottom: 10, marginBottom: 12, borderBottomWidth: 3 },
   title: { fontFamily: 'Helvetica-Bold', fontSize: 16 },
@@ -27,9 +27,10 @@ const s = StyleSheet.create({
   empty: { padding: 6, color: MUTED },
   footer: { position: 'absolute', bottom: 16, left: 28, right: 28, fontSize: 7.5, color: MUTED, textAlign: 'center' },
 })
+const s = reportStyles
 
-function Table({ section }) {
-  const rows = section.rows.slice(0, MAX_ROWS)
+export function PdfTable({ section, maxRows = MAX_ROWS }) {
+  const rows = section.rows.slice(0, maxRows)
   return (
     <View style={s.section}>
       {/* título não fica sozinho no fim da página */}
@@ -59,7 +60,7 @@ function Table({ section }) {
           <Text style={[s.empty, s.tr]}>Sem dados no período.</Text>
         )}
       </View>
-      {section.rows.length > MAX_ROWS ? <Text style={s.sectionSub}>Mostrando {MAX_ROWS} de {section.rows.length}. Use o CSV para a lista completa.</Text> : null}
+      {section.rows.length > maxRows ? <Text style={s.sectionSub}>Mostrando {maxRows} de {section.rows.length}. Use o CSV para a lista completa.</Text> : null}
     </View>
   )
 }
@@ -86,7 +87,7 @@ function ReportDocument({ data, meta }) {
           ))}
         </View>
         {reportSections(data).map((sec) => (
-          <Table key={sec.key} section={sec} />
+          <PdfTable key={sec.key} section={sec} />
         ))}
         <Text style={s.footer} fixed render={({ pageNumber, totalPages }) => `${meta.academia} · Página ${pageNumber} de ${totalPages}`} />
       </Page>
