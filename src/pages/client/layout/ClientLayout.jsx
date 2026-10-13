@@ -13,6 +13,7 @@ import { useBrand } from '../../../hooks/useBrand'
 import { useModules } from '../../../hooks/useModules'
 import { usePermissions } from '../../../hooks/usePermissions'
 import { setPreferredArea } from '../../../routes/accessOptions'
+import ContractGate from '../contrato/ContractGate'
 import styles from './ClientLayout.module.css'
 
 const NAV = [
@@ -89,6 +90,7 @@ export default function ClientLayout() {
       </main>
 
       <BottomNav items={nav} />
+      <ContractGate />
     </div>
   )
 }

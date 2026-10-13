@@ -18,6 +18,9 @@ export const acceptContract = (contractId) =>
 /** Dados completos (contrato, aluno, academia, personalização do recibo) */
 export const getContract = (contractId) => unwrap(supabase.rpc('get_contract', { p_contract: contractId }))
 
+/** Contrato que o aluno logado precisa aceitar antes de usar a área do aluno (id ou null) */
+export const myPendingContract = (academyId) => unwrap(supabase.rpc('meu_contrato_pendente', { p_academy: academyId }))
+
 export const defaultContractText = () => unwrap(supabase.rpc('default_contract_text'))
 
 export const CONTRACT_VARIABLES = ['nome', 'cpf', 'plano', 'valor', 'duracao', 'academia', 'cnpj', 'cidade', 'data']

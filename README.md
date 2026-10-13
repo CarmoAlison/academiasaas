@@ -45,6 +45,7 @@ Depois, **sempre** execute em ordem os arquivos de `src/database/migrations/`. E
 | `023_uma_ficha_por_aluno.sql` | Cada aluno tem uma ficha de treino só (o banco recusa a segunda); o nome da ficha deixa de ser pedido |
 | `024_catraca.sql` | Catraca Control iD (iDFace + iDBlock Next): equipamentos (Super Admin, senha criptografada), modo online/push via Edge Function `catraca`, cadastro facial, liberação manual, regras de bloqueio por academia, permissões e módulo adicional |
 | `025_catraca_fotos.sql` | Catraca: permissão de leitura nas fotos do cadastro facial (corrige "Você não tem permissão" ao enviar a foto) |
+| `026_contrato_lgpd.sql` | Termo de LGPD (com consentimento do reconhecimento facial) no fim de todo contrato e aceite obrigatório ao entrar na área do aluno |
 
 ### 2. Frontend
 
