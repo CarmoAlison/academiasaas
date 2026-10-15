@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Building2, CreditCard, FileClock, LayoutDashboard, LifeBuoy, Megaphone, Package, ScanFace, Settings, ShieldCheck, Trash2 } from 'lucide-react'
+import { Building2, CreditCard, FileClock, FileSignature, LayoutDashboard, LifeBuoy, Megaphone, Package, ScanFace, Settings, ShieldCheck, Trash2 } from 'lucide-react'
 import { Navigate } from 'react-router-dom'
 import AppShell from '../../../components/shell/AppShell'
 import ThemeToggle from '../../../components/shell/ThemeToggle'
@@ -36,6 +36,7 @@ const GROUPS = [
     items: [
       { to: '/super-admin/usuarios', label: 'Usuários', icon: ShieldCheck, area: 'equipe' },
       { to: '/super-admin/auditoria', label: 'Auditoria', icon: FileClock, area: 'auditoria' },
+      { to: '/super-admin/contrato', label: 'Contrato', icon: FileSignature, area: 'config' },
       { to: '/super-admin/configuracoes', label: 'Configurações', icon: Settings, area: 'config' },
       { to: '/super-admin/lixeira', label: 'Lixeira', icon: Trash2 },
     ],

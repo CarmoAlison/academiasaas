@@ -12,6 +12,11 @@ const dataHora = (iso) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'lo
 export function buildContractModel(data) {
   const cfg = { ...DEFAULT_RECEIPT_CONFIG, ...(data.config ?? {}) }
   const { contrato: c, aluno, academia, unidade } = data
+  // contrato do SaaS: quem assina é a academia (CNPJ) pelo painel dela
+  const saas = data.tipo === 'saas'
+  const contratante = saas
+    ? { nome: data.contratante?.nome ?? '', doc: data.contratante?.cnpj ? `CNPJ ${formatCNPJ(data.contratante.cnpj)}` : '' }
+    : { nome: aluno?.nome ?? '', doc: aluno?.cpf ? `CPF ${formatCPF(aluno.cpf)}` : '' }
   const accent = isHexColor(cfg.cor) ? cfg.cor : DEFAULT_RECEIPT_CONFIG.cor
 
   const endereco = unidade
@@ -48,6 +53,10 @@ export function buildContractModel(data) {
     temCabecalho: Boolean(paragrafos[0]) && !paragrafos[0].includes('\n') && /^[A-ZÀ-Ú0-9 .,:-]{8,}$/.test(paragrafos[0]),
     status: c.status,
     aluno: { nome: aluno?.nome ?? '', cpf: aluno?.cpf ? formatCPF(aluno.cpf) : '' },
+    contratante,
+    textos: saas
+      ? { aguardando: 'Aguardando assinatura da academia', via: '(CPF e senha) no painel da academia' }
+      : { aguardando: 'Aguardando aceite do aluno', via: '(CPF e senha) na área do aluno' },
     aceite:
       c.status === 'aceito'
         ? {
@@ -67,6 +76,6 @@ export function buildContractModel(data) {
       nome: assinaturaNome,
       cargo: cfg.assinatura_cargo || '',
     },
-    fileName: `contrato-${(aluno?.nome ?? 'aluno').split(' ')[0].toLowerCase()}-${String(c.id).slice(0, 8)}.pdf`,
+    fileName: `contrato-${(contratante.nome || 'aluno').split(' ')[0].toLowerCase()}-${String(c.id).slice(0, 8)}.pdf`,
   }
 }

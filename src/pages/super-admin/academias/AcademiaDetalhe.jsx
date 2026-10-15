@@ -6,6 +6,7 @@ import ResetPasswordButton from '../../../components/auth/ResetPasswordButton'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
 import QueryError from '../../../components/feedback/QueryError'
 import ReceiptModal from '../../../components/receipt/ReceiptModal'
+import ContratoTab from './ContratoTab'
 import {
   Button,
   Card,
@@ -158,6 +159,7 @@ const TABS = [
   { key: 'assinatura', label: 'Assinatura' },
   { key: 'modulos', label: 'Módulos' },
   { key: 'faturas', label: 'Faturas' },
+  { key: 'contrato', label: 'Contrato', area: 'academias' },
   { key: 'chamados', label: 'Chamados', area: 'suporte' },
   { key: 'administradores', label: 'Administradores' },
   { key: 'catraca', label: 'Catraca' },
@@ -343,6 +345,8 @@ export default function AcademiaDetalhe() {
         )}
 
         {tab === 'catraca' && <CatracaTab academyId={a.id} />}
+
+        {tab === 'contrato' && <ContratoTab academyId={a.id} />}
 
         {tab === 'chamados' && (
           <Card title="Chamados" padding={false}>

@@ -13,8 +13,9 @@ import { usePermissions } from '../../../hooks/usePermissions'
 import { useSupportRealtime } from '../../../hooks/useSupportRealtime'
 import { unreadTickets } from '../../../services/supportService'
 import { setPreferredArea } from '../../../routes/accessOptions'
+import { SaasContractBanner } from '../assinatura/ContratosSaas'
 import styles from './AdminLayout.module.css'
-import { visibleNav } from './adminNav'
+import { ADMIN_ONLY, visibleNav } from './adminNav'
 
 /** Layout da academia: sidebar + topbar */
 export default function AdminLayout() {
@@ -86,6 +87,7 @@ export default function AdminLayout() {
               </Button>
             </div>
           )}
+          {!impersonating && canAny([ADMIN_ONLY]) && <SaasContractBanner className={styles.banner} />}
           <AnnouncementBanner />
         </>
       }

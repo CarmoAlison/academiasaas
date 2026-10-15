@@ -48,6 +48,7 @@ Depois, **sempre** execute em ordem os arquivos de `src/database/migrations/`. E
 | `026_contrato_lgpd.sql` | Termo de LGPD (com consentimento do reconhecimento facial) no fim de todo contrato e aceite obrigatório ao entrar na área do aluno |
 | `027_catraca_resposta.sql` | Catraca: resposta da identificação no formato da Control iD (portal_id numérico) — corrige "Entrou" no log sem a catraca girar |
 | `028_catraca_digital.sql` | Catraca: biometria por digital (método "Biometria (digital)" no cadastro da catraca, cadastro da digital pela ficha do aluno via remote_enroll, rosto só para catracas faciais, "Digital" no log e termo de LGPD com a digital) |
+| `029_contrato_saas.sql` | Contrato do SaaS com a academia: modelo personalizável no Super Admin (texto com variáveis, estilo, cor, logo e assinatura), envio pela página da academia e assinatura eletrônica pelo Admin da academia (IP, data e código SHA-256) |
 
 ### 2. Frontend
 

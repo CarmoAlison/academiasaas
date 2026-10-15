@@ -10,6 +10,7 @@ import { academyPrice, getAcademy, listSaasInvoices } from '../../../services/sa
 import { PAYMENT_METHODS } from '../../../utils/constants'
 import { formatCurrency, formatDate, paymentStatus } from '../../../utils/formatters'
 import styles from './Assinatura.module.css'
+import ContratosSaas from './ContratosSaas'
 import PlanUsage from './PlanUsage'
 
 const competenciaLabel = (d) => {
@@ -45,6 +46,7 @@ export default function Assinatura() {
     <>
       <PageHeader title="Assinatura do sistema" subtitle="Faturas do seu plano e recibos de pagamento" />
       <PlanUsage />
+      <ContratosSaas />
 
       {atrasadas.length > 0 && (
         <div className={styles.alert} role="alert">

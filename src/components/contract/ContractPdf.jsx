@@ -53,7 +53,7 @@ export function ContractDocument({ model: m, logoDataUrl, signatureDataUrl }) {
   const subColor = modern ? accentText : MUTED
 
   return (
-    <Document title={`${clean(m.titulo)} - ${m.aluno.nome}`} author={m.academia.nome} subject="Contrato">
+    <Document title={`${clean(m.titulo)} - ${m.contratante.nome}`} author={m.academia.nome} subject="Contrato">
       <Page size="A4" style={s.page} wrap>
         <View style={[s.header, headerStyle]}>
           <View style={s.brand}>
@@ -85,16 +85,15 @@ export function ContractDocument({ model: m, logoDataUrl, signatureDataUrl }) {
                 <Text style={s.accTitle}>Aceito eletronicamente</Text>
                 <Text style={s.accText}>
                   Por {m.aceite.nome}
-                  {m.aceite.cpf ? `, CPF ${m.aceite.cpf}` : ''}, em {m.aceite.em}, a partir do endereço IP {m.aceite.ip}, mediante login pessoal
-                  (CPF e senha) na área do aluno.
+                  {m.aceite.cpf ? `, CPF ${m.aceite.cpf}` : ''}, em {m.aceite.em}, a partir do endereço IP {m.aceite.ip}, mediante login pessoal {m.textos.via}.
                 </Text>
               </>
             ) : (
               <>
-                <Text style={s.accTitle}>{m.status === 'cancelado' ? 'Contrato cancelado' : 'Aguardando aceite do aluno'}</Text>
+                <Text style={s.accTitle}>{m.status === 'cancelado' ? 'Contrato cancelado' : m.textos.aguardando}</Text>
                 <Text style={s.accText}>
-                  Contratante: {m.aluno.nome}
-                  {m.aluno.cpf ? `, CPF ${m.aluno.cpf}` : ''}
+                  Contratante: {m.contratante.nome}
+                  {m.contratante.doc ? `, ${m.contratante.doc}` : ''}
                 </Text>
               </>
             )}

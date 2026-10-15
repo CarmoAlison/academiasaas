@@ -54,10 +54,10 @@ export default function ContractView({ model: m }) {
             </>
           ) : (
             <div>
-              <strong>{m.status === 'cancelado' ? 'Contrato cancelado (substituído ou anulado)' : 'Aguardando aceite do aluno'}</strong>
+              <strong>{m.status === 'cancelado' ? 'Contrato cancelado (substituído ou anulado)' : m.textos.aguardando}</strong>
               <span>
-                Contratante: {m.aluno.nome}
-                {m.aluno.cpf && `, CPF ${m.aluno.cpf}`}
+                Contratante: {m.contratante.nome}
+                {m.contratante.doc && `, ${m.contratante.doc}`}
               </span>
             </div>
           )}

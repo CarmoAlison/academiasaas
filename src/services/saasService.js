@@ -170,14 +170,17 @@ export async function getSettings() {
 
 /**
  * Salva as configurações gerais sem sobrescrever a personalização do recibo
- * (dados.recibo é gerenciado em Financeiro → Personalizar recibo).
+ * (dados.recibo, em Financeiro → Personalizar recibo) nem o modelo de contrato (dados.contrato).
  */
 export async function saveSettings(dados) {
   const current = await getSettings()
   const rest = { ...dados }
   delete rest.recibo
+  delete rest.contrato
   return unwrap(
-    supabase.from('saas_settings').upsert({ id: 1, dados: { ...current, ...rest, recibo: current.recibo }, updated_at: nowISO() }),
+    supabase
+      .from('saas_settings')
+      .upsert({ id: 1, dados: { ...current, ...rest, recibo: current.recibo, contrato: current.contrato }, updated_at: nowISO() }),
   )
 }
 

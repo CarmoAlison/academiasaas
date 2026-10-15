@@ -12,6 +12,7 @@ const PersonalizarRecibo = lazy(() => import('./financeiro/PersonalizarRecibo'))
 const Usuarios = lazy(() => import('./usuarios/Usuarios'))
 const Auditoria = lazy(() => import('./auditoria/Auditoria'))
 const Configuracoes = lazy(() => import('./configuracoes/Configuracoes'))
+const ContratoSaas = lazy(() => import('./contrato/ContratoSaas'))
 const Chamados = lazy(() => import('./chamados/Chamados'))
 const Avisos = lazy(() => import('./avisos/Avisos'))
 const Perfil = lazy(() => import('./perfil/Perfil'))
@@ -37,6 +38,7 @@ export const superAdminRoutes = (
     <Route path="usuarios" element={guard('equipe', <Usuarios />)} />
     <Route path="auditoria" element={guard('auditoria', <Auditoria />)} />
     <Route path="configuracoes" element={guard('config', <Configuracoes />)} />
+    <Route path="contrato" element={guard('config', <ContratoSaas />)} />
     <Route path="perfil" element={<Perfil />} />
     <Route path="lixeira" element={<Lixeira />} />
     <Route path="equipamentos" element={<Equipamentos />} />
