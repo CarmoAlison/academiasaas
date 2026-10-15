@@ -33,7 +33,7 @@ import { STUDENT_STATUS, UFS } from '../../../utils/constants'
 import { formatCEP, formatCPF, formatCurrency, formatDate, formatPhone, toISODate } from '../../../utils/formatters'
 import { rules } from '../../../utils/validators'
 import styles from './AlunoForm.module.css'
-import FaceCard from './FaceCard'
+import CatracaBiometria from './CatracaBiometria'
 import { ContratosTab, FrequenciaTab, HistoricoTab, PlanoResumo, PlanoTab, TreinosTab, fichaTabs } from './FichaAluno'
 
 const EMPTY = {
@@ -234,7 +234,7 @@ export default function AlunoForm() {
                   </p>
                   {can('alunos.editar') && <ResetPasswordButton profileId={student.data.profile.id} nome={student.data.profile.nome} />}
                 </Card>
-                {mod.has('catraca') && <FaceCard student={student.data} />}
+                {mod.has('catraca') && <CatracaBiometria student={student.data} />}
               </div>
             </div>
           )}

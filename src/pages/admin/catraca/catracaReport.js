@@ -7,7 +7,7 @@ export const RESULTADOS = {
   desistencia: { label: 'Não passou', tone: 'neutral' },
   nao_identificado: { label: 'Não identificado', tone: 'warning' },
 }
-export const METODOS = { facial: 'Rosto', cartao: 'Cartão', qrcode: 'QR Code', senha: 'Senha' }
+export const METODOS = { facial: 'Rosto', digital: 'Digital', cartao: 'Cartão', qrcode: 'QR Code', senha: 'Senha' }
 
 const resultadoLabel = (r) => RESULTADOS[r]?.label ?? r
 const diaLocal = (iso) => {

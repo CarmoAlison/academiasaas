@@ -39,7 +39,7 @@ export const listComandos = (deviceId) =>
 
 // ---- Academia ----------------------------------------------------------
 
-/** Catracas da academia, só com nome (sem dados técnicos) */
+/** Catracas da academia, só com nome e o que cada uma lê (sem dados técnicos) */
 export const listCatracasAcademia = (academyId) => unwrap(supabase.rpc('catraca_lista_academia', { p_academy: academyId }))
 
 export const liberarCatraca = (deviceId, motivo) => unwrap(supabase.rpc('catraca_liberar', { p_device: deviceId, p_motivo: motivo }))
@@ -82,9 +82,19 @@ export async function listAcessosPeriodo(academyId, { de, ate, deviceId, resulta
   return rows
 }
 
-/** Situação do rosto do aluno na catraca */
+/** Situação do rosto e da digital do aluno na catraca */
 export const faceStatus = (studentId) =>
-  unwrap(supabase.from('catraca_usuarios').select('face_status, face_erro, face_em').eq('student_id', studentId).maybeSingle())
+  unwrap(
+    supabase
+      .from('catraca_usuarios')
+      .select('face_status, face_erro, face_em, digital_status, digital_erro, digital_em, digital_device')
+      .eq('student_id', studentId)
+      .maybeSingle(),
+  )
+
+/** A catraca escolhida entra em modo de captura e o aluno põe o dedo no leitor */
+export const cadastrarDigital = (studentId, deviceId) =>
+  unwrap(supabase.rpc('catraca_cadastrar_digital', { p_student: studentId, p_device: deviceId }))
 
 /** Envia a foto (já reduzida) e manda cadastrar o rosto em todas as catracas da academia */
 export async function cadastrarRosto(academyId, studentId, blob) {

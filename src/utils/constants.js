@@ -39,7 +39,7 @@ export const ACTIONS = [
   { key: 'excluir', label: 'Excluir' },
   { key: 'exportar', label: 'Exportar' },
   { key: 'liberar', label: 'Liberar giro' },
-  { key: 'biometria', label: 'Cadastrar rosto' },
+  { key: 'biometria', label: 'Cadastrar rosto e digital' },
 ]
 
 export const STUDENT_STATUS = [

@@ -42,9 +42,20 @@ const SENTIDOS = [
   { value: 'saida', label: 'Saída (não gera check-in)' },
   { value: 'ambos', label: 'Entrada e saída' },
 ]
-const MODELOS = ['iDBlock Next + iDFace', 'iDBlock Next (display integrado)', 'iDBlock', 'iDFace (porta)', 'iDFace Max', 'Outro']
+const MODELOS = [
+  'iDBlock Next + iDFace',
+  'iDBlock Next (display integrado)',
+  'iDBlock Next + leitor biométrico',
+  'iDBlock',
+  'iDFace (porta)',
+  'iDFace Max',
+  'iDAccess (biometria)',
+  'iDFlex (biometria)',
+  'Outro',
+]
 const METODOS = [
   { value: 'facial', label: 'Reconhecimento facial' },
+  { value: 'digital', label: 'Biometria (digital)' },
   { value: 'cartao', label: 'Cartão de proximidade' },
   { value: 'senha', label: 'Senha' },
   { value: 'qrcode', label: 'QR Code' },
@@ -64,7 +75,7 @@ const DIRECOES = [
   { value: 'anticlockwise', label: 'Anti-horário' },
   { value: 'both', label: 'Os dois sentidos' },
 ]
-const COMANDO = { usuario: 'Cadastrar aluno', rosto: 'Cadastrar rosto', liberar: 'Liberar giro', remover: 'Remover aluno', config: 'Configuração' }
+const COMANDO = { usuario: 'Cadastrar aluno', rosto: 'Cadastrar rosto', digital: 'Cadastrar digital', liberar: 'Liberar giro', remover: 'Remover aluno', config: 'Configuração' }
 
 const EMPTY = {
   nome: '',
