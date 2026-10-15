@@ -129,6 +129,18 @@ export default function ReceiptCustomizer({ settings, sample, onSave, saving, on
               <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={onImage('logo', 'logo_url')} />
             </div>
 
+            <div style={{ marginTop: 12 }}>
+              <Switch
+                label="Logo completa no lugar do nome"
+                checked={Boolean(values.logo_completa)}
+                disabled={!model.logo}
+                onChange={(v) => setValue('logo_completa', v)}
+              />
+              <small className="text-muted" style={{ display: 'block', marginTop: 4 }}>
+                Para logo horizontal que já traz o nome: o nome some do cabeçalho e a logo aparece maior.
+              </small>
+            </div>
+
             <span className={styles.fieldLabel}>Cor de destaque</span>
             <div className={styles.colors}>
               {PRESETS.map((c) => (

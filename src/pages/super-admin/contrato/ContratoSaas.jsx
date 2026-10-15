@@ -2,13 +2,14 @@ import { useQuery } from '@tanstack/react-query'
 import { Copy, Download, ImagePlus, Info, PenLine, RotateCcw, Save, Trash2, UserRound } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import ContractEditor from '../../../components/contract/ContractEditor'
 import { buildContractModel } from '../../../components/contract/contractModel'
 import ContractView from '../../../components/contract/ContractView'
 import { PageLoader } from '../../../components/feedback/FullPageLoader'
 import QueryError from '../../../components/feedback/QueryError'
 import { downloadBlob, generateContractPdf } from '../../../components/receipt/pdfExport'
 import styles from '../../../components/receipt/ReceiptCustomizer.module.css'
-import { Button, Card, FormGrid, FullRow, Input, PageHeader, Textarea, useConfirm, useToast } from '../../../components/ui'
+import { Button, Card, FormGrid, FullRow, Input, PageHeader, Switch, useConfirm, useToast } from '../../../components/ui'
 import { useAuth } from '../../../hooks/useAuth'
 import { useForm } from '../../../hooks/useForm'
 import { useMutationToast } from '../../../hooks/useMutationToast'
@@ -155,13 +156,13 @@ function Editor({ settings, dados, textoPadrao }) {
                     </Button>
                   ))}
                 </div>
-                <Textarea
+                <ContractEditor
                   id={TEXTO_ID}
                   label="Texto"
                   rows={18}
                   placeholder="Deixe em branco para usar o modelo padrão"
-                  hint="Separe as cláusulas com uma linha em branco. Se a 1ª linha estiver em MAIÚSCULAS, ela vira o título no documento."
-                  {...field('texto')}
+                  value={values.texto}
+                  onChange={(v) => setValue('texto', v)}
                 />
                 {!values.texto && textoPadrao && (
                   <Button type="button" variant="ghost" size="sm" icon={Copy} onClick={() => setValue('texto', textoPadrao)}>
@@ -189,6 +190,18 @@ function Editor({ settings, dados, textoPadrao }) {
                 <small className="text-muted">PNG ou JPG, até 2 MB. Fundo transparente fica melhor.</small>
               </div>
               <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={onImage('logo', 'logo_url')} />
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <Switch
+                label="Logo completa no lugar do nome"
+                checked={Boolean(values.logo_completa)}
+                disabled={!model.logo}
+                onChange={(v) => setValue('logo_completa', v)}
+              />
+              <small className="text-muted" style={{ display: 'block', marginTop: 4 }}>
+                Para logo horizontal que já traz o nome: o nome some do cabeçalho e a logo aparece maior.
+              </small>
             </div>
 
             <span className={styles.fieldLabel}>Cor de destaque</span>

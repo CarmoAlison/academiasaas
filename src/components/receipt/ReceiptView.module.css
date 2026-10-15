@@ -92,6 +92,32 @@
   opacity: 0.85;
 }
 
+/* logo completa (horizontal) no lugar do ícone + nome */
+.wordmark {
+  display: grid;
+  place-items: center;
+  height: 56px;
+  max-width: 240px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.classic .wordmark {
+  border: 1px solid var(--line);
+}
+
+.wordmark img {
+  display: block;
+  max-width: 100%;
+  max-height: 44px;
+  object-fit: contain;
+}
+
+.wordmarkSub {
+  margin-top: 4px;
+}
+
 .docTitle {
   display: flex;
   flex-direction: column;

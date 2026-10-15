@@ -19,6 +19,7 @@ export const SAAS_CONTRACT_DEFAULTS = {
   titulo: '',
   texto: '',
   logo_url: null,
+  logo_completa: false,
   cor: '#006EB8',
   estilo: 'moderno',
   assinatura_modo: 'linha',

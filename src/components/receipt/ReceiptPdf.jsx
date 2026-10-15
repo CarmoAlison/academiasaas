@@ -29,6 +29,8 @@ const base = StyleSheet.create({
   brand: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
   logo: { width: 46, height: 46, borderRadius: 8, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   logoImg: { width: 40, height: 40, objectFit: 'contain' },
+  wordmark: { height: 46, width: 190, borderRadius: 8, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  wordmarkImg: { height: 38, width: 174, objectFit: 'contain' },
   initials: { fontFamily: 'Helvetica-Bold', fontSize: 15 },
   brandName: { fontFamily: 'Helvetica-Bold', fontSize: 14 },
   brandSub: { fontSize: 9, marginTop: 2 },
@@ -81,6 +83,14 @@ export function ReceiptDocument({ model: m, logoDataUrl, signatureDataUrl }) {
       <Page size="A4" style={base.page}>
         <View style={base.card}>
           <View style={[base.header, headerStyle]}>
+            {m.logoCompleta && logoDataUrl ? (
+              <View style={{ flexShrink: 1 }}>
+                <View style={[base.wordmark, !modern && { borderWidth: 1, borderColor: LINE }]}>
+                  <Image src={logoDataUrl} style={base.wordmarkImg} />
+                </View>
+                {m.academia.cnpj ? <Text style={[base.brandSub, { color: subColor, marginTop: 4 }]}>{m.academia.cnpj}</Text> : null}
+              </View>
+            ) : (
             <View style={base.brand}>
               <View style={[base.logo, !modern && { borderWidth: 1, borderColor: LINE }]}>
                 {logoDataUrl ? (
@@ -94,6 +104,7 @@ export function ReceiptDocument({ model: m, logoDataUrl, signatureDataUrl }) {
                 {m.academia.cnpj ? <Text style={[base.brandSub, { color: subColor }]}>{m.academia.cnpj}</Text> : null}
               </View>
             </View>
+            )}
             <View style={base.docTitle}>
               <Text style={[base.docLabel, { color: subColor }]}>{clean(m.cfg.titulo)}</Text>
               <Text style={[base.docNumber, !modern && { color: accentDeep }]}>Nº {m.numero}</Text>

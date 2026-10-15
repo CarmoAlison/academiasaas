@@ -6,6 +6,7 @@ import { formatCEP, formatCNPJ, formatCPF, formatCurrency, formatDate, formatPho
 /** Personalização padrão (quando a academia ainda não configurou) */
 export const DEFAULT_RECEIPT_CONFIG = {
   logo_url: null,
+  logo_completa: false, // logo horizontal no lugar do nome
   cor: '#006EB8',
   estilo: 'moderno',
   titulo: 'Recibo de pagamento',
@@ -75,6 +76,7 @@ export function buildReceiptModel(data, overrideConfig) {
       accentDeep: shade(accent, 0.25),
     },
     logo: cfg.logo_url || academia?.logo_url || null,
+    logoCompleta: Boolean(cfg.logo_completa && (cfg.logo_url || academia?.logo_url)),
     academia: {
       nome: academia?.nome ?? '',
       iniciais: (academia?.nome ?? '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase(),

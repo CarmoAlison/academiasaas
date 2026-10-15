@@ -1,6 +1,65 @@
 import { Dumbbell, ShieldCheck } from 'lucide-react'
+import { Fragment } from 'react'
 import receiptStyles from '../receipt/ReceiptView.module.css'
 import styles from './ContractView.module.css'
+
+/** Trechos com negrito, itálico e sublinhado */
+function Runs({ runs }) {
+  return runs.map((r, k) => {
+    let el = r.text
+    if (r.u) el = <u>{el}</u>
+    if (r.i) el = <em>{el}</em>
+    if (r.b) el = <strong>{el}</strong>
+    return <Fragment key={k}>{el}</Fragment>
+  })
+}
+
+/** Um bloco do texto formatado (ver contractFormat.js) */
+function Block({ block: b }) {
+  switch (b.type) {
+    case 'h1':
+      return (
+        <h3 className={styles.h1}>
+          <Runs runs={b.runs} />
+        </h3>
+      )
+    case 'h2':
+      return (
+        <h4 className={styles.h2}>
+          <Runs runs={b.runs} />
+        </h4>
+      )
+    case 'center':
+      return (
+        <p className={`${styles.paragraph} ${styles.center}`}>
+          <Runs runs={b.runs} />
+        </p>
+      )
+    case 'hr':
+      return <hr className={styles.hr} />
+    case 'list':
+      return (
+        <ul className={styles.list}>
+          {b.items.map((it, k) => (
+            <li key={k}>
+              <Runs runs={it} />
+            </li>
+          ))}
+        </ul>
+      )
+    default:
+      return (
+        <p className={styles.paragraph}>
+          {b.lines.map((line, k) => (
+            <Fragment key={k}>
+              {k > 0 && <br />}
+              <Runs runs={line} />
+            </Fragment>
+          ))}
+        </p>
+      )
+  }
+}
 
 /**
  * Contrato em HTML (mesmo cabeçalho/assinatura do recibo). Papel sempre branco.
@@ -20,11 +79,23 @@ export default function ContractView({ model: m }) {
     <article className={`${rs.paper} ${m.cfg.estilo === 'classico' ? rs.classic : rs.modern}`} style={vars} aria-label={m.titulo}>
       <header className={rs.header}>
         <div className={rs.brand}>
-          <span className={rs.logo}>{m.logo ? <img src={m.logo} alt="" /> : m.academia.iniciais || <Dumbbell size={22} />}</span>
-          <div className={rs.brandText}>
-            <strong>{m.academia.nome}</strong>
-            {m.academia.cnpj && <small>{m.academia.cnpj}</small>}
-          </div>
+          {m.logoCompleta ? (
+            // logo completa (com o nome) no lugar do ícone + nome
+            <div className={rs.brandText}>
+              <span className={rs.wordmark}>
+                <img src={m.logo} alt={m.academia.nome} />
+              </span>
+              {m.academia.cnpj && <small className={rs.wordmarkSub}>{m.academia.cnpj}</small>}
+            </div>
+          ) : (
+            <>
+              <span className={rs.logo}>{m.logo ? <img src={m.logo} alt="" /> : m.academia.iniciais || <Dumbbell size={22} />}</span>
+              <div className={rs.brandText}>
+                <strong>{m.academia.nome}</strong>
+                {m.academia.cnpj && <small>{m.academia.cnpj}</small>}
+              </div>
+            </>
+          )}
         </div>
         <div className={rs.docTitle}>
           <span>Contrato</span>
@@ -34,10 +105,8 @@ export default function ContractView({ model: m }) {
 
       <div className={`${rs.body} ${styles.body}`}>
         {!m.temCabecalho && <h2 className={styles.title}>{m.titulo}</h2>}
-        {m.paragrafos.map((p, i) => (
-          <p key={i} className={i === 0 && m.temCabecalho ? styles.heading : styles.paragraph}>
-            {p}
-          </p>
+        {m.blocos.map((b, i) => (
+          <Block key={i} block={b} />
         ))}
 
         <section className={styles.acceptance}>

@@ -14,6 +14,8 @@ const s = StyleSheet.create({
   brand: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
   logo: { width: 42, height: 42, borderRadius: 8, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   logoImg: { width: 36, height: 36, objectFit: 'contain' },
+  wordmark: { height: 42, width: 180, borderRadius: 8, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  wordmarkImg: { height: 34, width: 164, objectFit: 'contain' },
   initials: { fontFamily: 'Helvetica-Bold', fontSize: 14 },
   brandName: { fontFamily: 'Helvetica-Bold', fontSize: 13 },
   brandSub: { fontSize: 8.5, marginTop: 2 },
@@ -37,7 +39,63 @@ const s = StyleSheet.create({
   footer: { position: 'absolute', bottom: 18, left: 36, right: 36, borderTopWidth: 1, borderTopColor: LINE, paddingTop: 6 },
   footerText: { fontSize: 7.5, color: MUTED, textAlign: 'center' },
   code: { fontFamily: 'Courier-Bold', color: INK },
+  h1: { fontFamily: 'Helvetica-Bold', fontSize: 12.5, textAlign: 'center', marginTop: 4, marginBottom: 12, lineHeight: 1.4 },
+  h2: { fontFamily: 'Helvetica-Bold', fontSize: 11, marginTop: 8, marginBottom: 6, lineHeight: 1.4 },
+  listItem: { flexDirection: 'row', marginBottom: 3, paddingLeft: 6 },
+  bullet: { width: 12, fontSize: 10.5, lineHeight: 1.6 },
+  listText: { flex: 1, fontSize: 10.5, lineHeight: 1.6, color: '#1F2937' },
+  hr: { borderTopWidth: 1, borderTopColor: '#D1D5DB', marginVertical: 10 },
 })
+
+/** Helvetica: uma fonte por combinação de negrito/itálico */
+const FONT = { '00': 'Helvetica', 10: 'Helvetica-Bold', '01': 'Helvetica-Oblique', 11: 'Helvetica-BoldOblique' }
+
+/** Remove emojis sem cortar os espaços entre os trechos */
+const cleanRun = (t) => String(t ?? '').replace(/\p{Extended_Pictographic}|️|‍/gu, '')
+
+/** Trechos com negrito, itálico e sublinhado (texto aninhado do react-pdf) */
+const runs = (list, bold = false) =>
+  list.map((r, k) => (
+    <Text key={k} style={{ fontFamily: FONT[`${r.b || bold ? 1 : 0}${r.i ? 1 : 0}`], textDecoration: r.u ? 'underline' : 'none' }}>
+      {cleanRun(r.text)}
+    </Text>
+  ))
+
+/** Um bloco do texto formatado (ver contractFormat.js) */
+function PdfBlock({ block: b, accent }) {
+  switch (b.type) {
+    case 'h1':
+      return <Text style={s.h1}>{runs(b.runs, true)}</Text>
+    case 'h2':
+      return <Text style={[s.h2, { color: accent }]}>{runs(b.runs, true)}</Text>
+    case 'center':
+      return <Text style={[s.paragraph, { textAlign: 'center' }]}>{runs(b.runs)}</Text>
+    case 'hr':
+      return <View style={s.hr} />
+    case 'list':
+      return (
+        <View style={{ marginBottom: 8 }}>
+          {b.items.map((it, k) => (
+            <View key={k} style={s.listItem} wrap={false}>
+              <Text style={s.bullet}>•</Text>
+              <Text style={s.listText}>{runs(it)}</Text>
+            </View>
+          ))}
+        </View>
+      )
+    default:
+      return (
+        <Text style={s.paragraph}>
+          {b.lines.map((line, k) => (
+            <Text key={k}>
+              {k > 0 ? '\n' : ''}
+              {runs(line)}
+            </Text>
+          ))}
+        </Text>
+      )
+  }
+}
 
 
 /**
@@ -56,6 +114,14 @@ export function ContractDocument({ model: m, logoDataUrl, signatureDataUrl }) {
     <Document title={`${clean(m.titulo)} - ${m.contratante.nome}`} author={m.academia.nome} subject="Contrato">
       <Page size="A4" style={s.page} wrap>
         <View style={[s.header, headerStyle]}>
+          {m.logoCompleta && logoDataUrl ? (
+            <View style={{ flexShrink: 1 }}>
+              <View style={[s.wordmark, !modern && { borderWidth: 1, borderColor: LINE }]}>
+                <Image src={logoDataUrl} style={s.wordmarkImg} />
+              </View>
+              {m.academia.cnpj ? <Text style={[s.brandSub, { color: subColor, marginTop: 4 }]}>{m.academia.cnpj}</Text> : null}
+            </View>
+          ) : (
           <View style={s.brand}>
             <View style={[s.logo, !modern && { borderWidth: 1, borderColor: LINE }]}>
               {logoDataUrl ? <Image src={logoDataUrl} style={s.logoImg} /> : <Text style={[s.initials, { color: accent }]}>{m.academia.iniciais}</Text>}
@@ -65,6 +131,7 @@ export function ContractDocument({ model: m, logoDataUrl, signatureDataUrl }) {
               {m.academia.cnpj ? <Text style={[s.brandSub, { color: subColor }]}>{m.academia.cnpj}</Text> : null}
             </View>
           </View>
+          )}
           <View>
             <Text style={[s.docLabel, { color: subColor }]}>Contrato</Text>
             <Text style={[s.docCode, !modern && { color: accentDeep }]}>{m.codigo.slice(0, 9)}</Text>
@@ -72,10 +139,8 @@ export function ContractDocument({ model: m, logoDataUrl, signatureDataUrl }) {
         </View>
 
         {!m.temCabecalho ? <Text style={s.title}>{clean(m.titulo)}</Text> : null}
-        {m.paragrafos.map((p, i) => (
-          <Text key={i} style={i === 0 && m.temCabecalho ? s.heading : s.paragraph}>
-            {clean(p)}
-          </Text>
+        {m.blocos.map((b, i) => (
+          <PdfBlock key={i} block={b} accent={accentDeep} />
         ))}
 
         <View style={[s.acceptance, { backgroundColor: accentTint, borderColor: accentSoft }]} wrap={false}>

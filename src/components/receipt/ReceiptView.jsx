@@ -19,13 +19,25 @@ export default function ReceiptView({ model: m }) {
     <article className={`${styles.paper} ${m.cfg.estilo === 'classico' ? styles.classic : styles.modern}`} style={vars} aria-label={`Recibo nº ${m.numero}`}>
       <header className={styles.header}>
         <div className={styles.brand}>
-          <span className={styles.logo}>
-            {m.logo ? <img src={m.logo} alt="" /> : m.academia.iniciais || <Dumbbell size={22} />}
-          </span>
-          <div className={styles.brandText}>
-            <strong>{m.academia.nome}</strong>
-            {m.academia.cnpj && <small>{m.academia.cnpj}</small>}
-          </div>
+          {m.logoCompleta ? (
+            // logo completa (com o nome) no lugar do ícone + nome
+            <div className={styles.brandText}>
+              <span className={styles.wordmark}>
+                <img src={m.logo} alt={m.academia.nome} />
+              </span>
+              {m.academia.cnpj && <small className={styles.wordmarkSub}>{m.academia.cnpj}</small>}
+            </div>
+          ) : (
+            <>
+              <span className={styles.logo}>
+                {m.logo ? <img src={m.logo} alt="" /> : m.academia.iniciais || <Dumbbell size={22} />}
+              </span>
+              <div className={styles.brandText}>
+                <strong>{m.academia.nome}</strong>
+                {m.academia.cnpj && <small>{m.academia.cnpj}</small>}
+              </div>
+            </>
+          )}
         </div>
         <div className={styles.docTitle}>
           <span>{m.cfg.titulo}</span>

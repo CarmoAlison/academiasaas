@@ -34,7 +34,7 @@ export const getReceiptSettings = (academyId) =>
   unwrap(supabase.from('receipt_settings').select('*').eq('academy_id', academyId).maybeSingle())
 
 const FIELDS = [
-  'logo_url', 'cor', 'estilo', 'titulo', 'mensagem', 'rodape', 'cidade',
+  'logo_url', 'logo_completa', 'cor', 'estilo', 'titulo', 'mensagem', 'rodape', 'cidade',
   'exibir_cnpj', 'exibir_endereco', 'exibir_contato', 'exibir_assinatura', 'exibir_selo',
   'assinatura_nome', 'assinatura_cargo', 'assinatura_modo', 'assinatura_url',
 ]

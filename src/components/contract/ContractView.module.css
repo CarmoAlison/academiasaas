@@ -17,6 +17,46 @@
   color: #111827;
 }
 
+/* formatação do texto (# título, ## subtítulo, -> centro <-, listas, ---) */
+.h1 {
+  margin: 6px 0 14px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  color: #111827;
+}
+
+.h2 {
+  margin: 14px 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--accent-deep, #111827);
+}
+
+.center {
+  text-align: center !important;
+}
+
+.list {
+  margin: 0 0 10px;
+  padding-left: 22px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #1f2937;
+}
+
+.list li + li {
+  margin-top: 2px;
+}
+
+.hr {
+  margin: 14px 0;
+  border: 0;
+  border-top: 1px solid #d1d5db;
+}
+
 .paragraph {
   margin-bottom: 10px;
   font-size: 13.5px;

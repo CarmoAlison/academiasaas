@@ -1,6 +1,7 @@
 import { isHexColor, readableOn, shade, tint } from '../../utils/color'
 import { formatCEP, formatCNPJ, formatCPF, formatPhone } from '../../utils/formatters'
 import { DEFAULT_RECEIPT_CONFIG } from '../receipt/receiptModel'
+import { parseContract } from './contractFormat'
 
 const dataHora = (iso) => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' })
 
@@ -27,8 +28,8 @@ export function buildContractModel(data) {
   const telefone = unidade?.telefone || academia?.telefone
   const contato = [telefone ? formatPhone(telefone) : null, academia?.email].filter(Boolean).join(' · ')
   const assinaturaNome = cfg.assinatura_nome || academia?.nome || ''
-  // blocos separados por linha em branco viram parágrafos
-  const paragrafos = c.conteudo.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
+  // texto com formatação (títulos, negrito, listas...) → blocos
+  const blocos = parseContract(c.conteudo)
   const modo = cfg.assinatura_modo === 'imagem' && !cfg.assinatura_url ? 'linha' : cfg.assinatura_modo || 'linha'
 
   return {
@@ -41,6 +42,7 @@ export function buildContractModel(data) {
       accentDeep: shade(accent, 0.25),
     },
     logo: cfg.logo_url || academia?.logo_url || null,
+    logoCompleta: Boolean(cfg.logo_completa && (cfg.logo_url || academia?.logo_url)),
     academia: {
       nome: academia?.nome ?? '',
       iniciais: (academia?.nome ?? '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase(),
@@ -48,9 +50,9 @@ export function buildContractModel(data) {
       rodape: [endereco, contato].filter(Boolean).join(' · '),
     },
     titulo: c.titulo,
-    paragrafos,
-    // 1º bloco numa linha só e em MAIÚSCULAS = o texto já traz o título (não repete o título do contrato)
-    temCabecalho: Boolean(paragrafos[0]) && !paragrafos[0].includes('\n') && /^[A-ZÀ-Ú0-9 .,:-]{8,}$/.test(paragrafos[0]),
+    blocos,
+    // o texto já começa com um título: não repete o título do contrato
+    temCabecalho: blocos[0]?.type === 'h1',
     status: c.status,
     aluno: { nome: aluno?.nome ?? '', cpf: aluno?.cpf ? formatCPF(aluno.cpf) : '' },
     contratante,

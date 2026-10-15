@@ -12,6 +12,7 @@ import { useModules } from '../../../hooks/useModules'
 import { useMutationToast } from '../../../hooks/useMutationToast'
 import { getAcademySettings, saveAcademySettings } from '../../../services/academySettingsService'
 import { CONTRACT_VARIABLES, defaultContractText } from '../../../services/contractService'
+import ContractEditor from '../../../components/contract/ContractEditor'
 import { calcEncargos, PIX_TIPOS, pixText } from '../../../utils/cobranca'
 import { isHexColor, readableOn, tint } from '../../../utils/color'
 import { addDays, formatCurrency, onlyDigits, toISODate } from '../../../utils/formatters'
@@ -337,12 +338,14 @@ function SettingsForm({ initial, tab, onTab }) {
               <Input label="Título" placeholder="Contrato de prestação de serviços" {...field('contrato_titulo')} />
             </FullRow>
             <FullRow>
-              <Textarea
+              <ContractEditor
+                id="contrato-aluno-texto"
                 label="Texto do contrato"
                 rows={14}
                 placeholder={defaultText.data ?? 'Carregando modelo padrão…'}
                 hint={`Deixe em branco para usar o modelo padrão. Variáveis: ${CONTRACT_VARIABLES.map((v) => `{${v}}`).join(' ')}`}
-                {...field('contrato_texto')}
+                value={values.contrato_texto}
+                onChange={(v) => setValue('contrato_texto', v)}
               />
               {!values.contrato_texto && defaultText.data && (
                 <Button type="button" variant="ghost" size="sm" icon={Copy} onClick={() => setValue('contrato_texto', defaultText.data)}>
